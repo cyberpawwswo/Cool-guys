@@ -13,7 +13,7 @@ func _ready() -> void:
 	if camera == null:
 		push_error("❌ Камера не найдена! Проверь имя в дереве сцены.")
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	# Выход из захвата мыши по Escape
 	if Input.is_action_just_pressed("ui_cancel"):
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
@@ -50,3 +50,15 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0, speed)
 
 	move_and_slide()
+
+
+func _process(delta: float) -> void:
+	if $Camera3D/RayCast3D.is_colliding():
+		var body = $Camera3D/RayCast3D.get_collider()
+		if Input.is_action_just_pressed('attack'):
+			if body is RigidBody3D:
+				var impulse = body.global_position - get_parent().global_position
+				impulse = impulse.normalized() 
+				body.apply_central_impulse(impulse*100)
+			if "hp" in body:
+				body.hp = 0

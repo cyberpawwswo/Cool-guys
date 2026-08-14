@@ -3,6 +3,7 @@
 [ext_resource type="Texture2D" uid="uid://da2lt8kxwi356" path="res://addons/godot-prototype-texture/PNG/checker_512x512/checker_black_512x512.png" id="1_62kbb"]
 [ext_resource type="PackedScene" uid="uid://csrwnvgh81t7w" path="res://scenes/player/player.tscn" id="1_i0vk3"]
 [ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="3_uxvkn"]
+[ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_kc65l"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -48,3 +49,6 @@ shape = SubResource("ConcavePolygonShape3D_qv4mi")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9905577, 0)
 
 [node name="PauseMenu" parent="." unique_id=422567127 instance=ExtResource("3_uxvkn")]
+
+[node name="RigidBody3D" parent="." unique_id=1909331113 instance=ExtResource("4_uxvkn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -3)

@@ -13,5 +13,31 @@ shape = SubResource("CapsuleShape3D_0x52n")
 [node name="Camera3D" type="Camera3D" parent="." unique_id=770244525]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55538446, 0)
 
-[node name="Cam" type="Node3D" parent="." unique_id=1962425425]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55538446, 0)
+[node name="RayCast3D" type="RayCast3D" parent="Camera3D" unique_id=724371325]
+target_position = Vector3(0, 0, -300)
+
+[node name="Control" type="Control" parent="." unique_id=1117198956]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="Control" unique_id=1946104556]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -9.5
+offset_top = -9.5
+offset_right = 9.5
+offset_bottom = 9.5
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(1, 1, 1, 0.62352943)
+
+[node name="Node3D" type="Node3D" parent="." unique_id=508049726]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.51845044, -0.97542)
