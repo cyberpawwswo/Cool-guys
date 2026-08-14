@@ -50,4 +50,5 @@ animations = [{
 
 [node name="Arm" type="AnimatedSprite2D" unique_id=2028945353]
 sprite_frames = SubResource("SpriteFrames_30iqu")
-animation = &"idle"
+animation = &"reload"
+frame_progress = 0.95491636
