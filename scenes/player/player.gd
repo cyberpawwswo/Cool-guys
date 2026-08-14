@@ -1,143 +1,314 @@
 extends CharacterBody3D
 
-@onready var ray: RayCast3D = $Camera3D/RayCast3D
 
+@export_category("Movement")
+@export var walk_speed := 5.0
+@export var sprint_speed := 9.0
+@export var ground_acceleration := 32.0
+@export var ground_deceleration := 26.0
+@export var air_acceleration := 8.0
+@export var jump_velocity := 4.5
+@export var coyote_time := 0.12
+@export var jump_buffer_time := 0.12
 
-@export var CLOSE_DISTANCE: float = 2.0
-@export var CLOSE_MULTIPLIER: float = 3.0
+@export_category("Dash")
+@export var dash_speed := 18.0
+@export var dash_duration := 0.15
+@export var dash_cooldown := 0.8
+@export var dash_fov_boost := 7.0
 
-@export var headbutt = 20
+@export_category("Camera")
+@export var mouse_sensitivity := 0.005
+@export var camera_smoothing := 14.0
+@export var walk_bob_amount := 0.035
+@export var sprint_bob_amount := 0.055
+@export var bob_frequency := 2.1
+@export var strafe_roll_degrees := 1.8
+@export var turn_roll_degrees := 1.25
+@export var sprint_fov_boost := 4.0
 
-@export var IMPULSE: float = 20.0
-
-var camera_recoil: float = 0.0
-
-@onready var camera_start_pos: Vector3 = $Camera3D.position
-
-
-const WALK_SPEED = 5.0
-const SPRINT_SPEED = 9.0
-const JUMP_VELOCITY = 4.5
-const MOUSE_SENSITIVITY = 0.005
-
-# Настройки рывка
-const DASH_SPEED = 18.0
-const DASH_DURATION = 0.15
-const DASH_COOLDOWN = 0.8
-
-var dash_time_left := 0.0
-var dash_cooldown_left := 0.0
+@export_category("Headbutt")
+@export var close_distance := 2.0
+@export var close_multiplier := 3.0
+@export var impulse := 20.0
+@export var headbutt_duration := 0.38
+@export var headbutt_cooldown := 0.5
+@export var headbutt_lift := 0.11
+@export var headbutt_drop := 0.08
+@export var headbutt_reach := 0.18
+@export var headbutt_tilt_degrees := 7.0
 
 @onready var camera: Camera3D = $Camera3D
+@onready var ray: RayCast3D = $Camera3D/RayCast3D
+
+var _camera_start_position := Vector3.ZERO
+var _camera_start_fov := 75.0
+var _look_pitch := 0.0
+var _turn_roll_input := 0.0
+var _move_input := Vector2.ZERO
+var _bob_time := 0.0
+var _landing_kick := 0.0
+var _was_on_floor := false
+
+var _dash_time_left := 0.0
+var _dash_cooldown_left := 0.0
+var _dash_direction := Vector3.ZERO
+var _coyote_time_left := 0.0
+var _jump_buffer_left := 0.0
+
+var _headbutt_time := -1.0
+var _headbutt_cooldown_left := 0.0
+var _headbutt_has_hit := false
+var _suppress_attack_this_frame := false
+
 
 func _ready() -> void:
+	_camera_start_position = camera.position
+	_camera_start_fov = camera.fov
+	_look_pitch = camera.rotation.x
+	_was_on_floor = is_on_floor()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	
-	if camera == null:
-		push_error("❌ Камера не найдена! Проверь имя в дереве сцены.")
+
 
 func _input(event: InputEvent) -> void:
-	# Выход из захвата мыши по Escape
-	if Input.is_action_just_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel"):
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	
-	if event is InputEventMouseMotion and camera:
-		# Поворот персонажа по горизонтали
-		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
-		
-		# Поворот камеры по вертикали
-		camera.rotate_x(-event.relative.y * MOUSE_SENSITIVITY)
-		
-		# Ограничение угла обзора
-		camera.rotation.x = clamp(camera.rotation.x, -PI / 2.2, PI / 2.2)
+		return
+
+	if event is InputEventMouseButton and event.pressed:
+		if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			_suppress_attack_this_frame = true
+			get_viewport().set_input_as_handled()
+			return
+
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		rotate_y(-event.relative.x * mouse_sensitivity)
+		_look_pitch = clampf(
+			_look_pitch - event.relative.y * mouse_sensitivity,
+			-PI / 2.2,
+			PI / 2.2
+		)
+		_turn_roll_input = clampf(
+			_turn_roll_input - event.relative.x * 0.035,
+			-turn_roll_degrees,
+			turn_roll_degrees
+		)
+
 
 func _physics_process(delta: float) -> void:
-	# Перезарядка рывка
-	dash_cooldown_left = maxf(dash_cooldown_left - delta, 0.0)
-	
-	if dash_time_left > 0.0:
-		dash_time_left -= delta
-	
-	# Гравитация
-	if not is_on_floor():
-		velocity += get_gravity() * delta
+	_update_timers(delta)
+	_update_floor_assistance(delta)
 
-	# Прыжок
-	if Input.is_action_just_pressed("jump") and is_on_floor():
-		velocity.y = JUMP_VELOCITY
+	_move_input = Input.get_vector(
+		"move_left", "move_right", "move_forward", "move_backward"
+	)
+	var move_direction := (
+		transform.basis * Vector3(_move_input.x, 0.0, _move_input.y)
+	).normalized()
 
-	# Направление движения
-	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
-	var direction := (transform.basis * Vector3(input_dir.x, 0.0, input_dir.y)).normalized()
+	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0:
+		_start_dash(move_direction)
 
-	# Рывок
-	if Input.is_action_just_pressed("dash") and dash_cooldown_left <= 0.0:
-		var dash_direction := direction
-		
-		# Если игрок не движется — рывок вперёд
-		if dash_direction == Vector3.ZERO:
-			dash_direction = -transform.basis.z
-		
-		# Рывок только по горизонтали
-		dash_direction.y = 0.0
-		dash_direction = dash_direction.normalized()
-		
-		velocity.x = dash_direction.x * DASH_SPEED
-		velocity.z = dash_direction.z * DASH_SPEED
-		
-		dash_time_left = DASH_DURATION
-		dash_cooldown_left = DASH_COOLDOWN
-
-	# Пока идёт рывок — поддерживаем скорость рывка
-	if dash_time_left > 0.0:
-		var dash_dir := direction
-		
-		if dash_dir == Vector3.ZERO:
-			dash_dir = Vector3(velocity.x, 0.0, velocity.z).normalized()
-		
-		if dash_dir != Vector3.ZERO:
-			velocity.x = dash_dir.x * DASH_SPEED
-			velocity.z = dash_dir.z * DASH_SPEED
+	if _dash_time_left > 0.0:
+		velocity.x = _dash_direction.x * dash_speed
+		velocity.z = _dash_direction.z * dash_speed
 	else:
-		# Обычное движение
-		var speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else WALK_SPEED
-		
-		if direction != Vector3.ZERO:
-			velocity.x = direction.x * speed
-			velocity.z = direction.z * speed
-		else:
-			velocity.x = move_toward(velocity.x, 0.0, speed)
-			velocity.z = move_toward(velocity.z, 0.0, speed)
+		_update_horizontal_velocity(move_direction, delta)
 
+	var vertical_speed_before_move := velocity.y
 	move_and_slide()
 
+	if not _was_on_floor and is_on_floor():
+		_landing_kick = clampf(absf(vertical_speed_before_move) * 0.012, 0.0, 0.085)
+	_was_on_floor = is_on_floor()
+
+
 func _process(delta: float) -> void:
-	if $Camera3D/RayCast3D.is_colliding():
-		var body = $Camera3D/RayCast3D.get_collider()
+	if Input.is_action_just_pressed("attack") and not _suppress_attack_this_frame:
+		_start_headbutt()
+	_suppress_attack_this_frame = false
 
-		if body != null and Input.is_action_just_pressed("attack"):
-			var hit_point: Vector3 = $Camera3D/RayCast3D.get_collision_point()
-			var dist: float = global_position.distance_to(hit_point)
-			var is_close: bool = dist <= CLOSE_DISTANCE
+	var headbutt_pose := _update_headbutt(delta)
+	_update_camera(delta, headbutt_pose)
 
-			var power: float = IMPULSE
-			if is_close:
-				power *= CLOSE_MULTIPLIER
 
-			var dir: Vector3 = hit_point - global_position
-			if dir.length_squared() < 0.001:
-				dir = -$Camera3D.global_transform.basis.z
+func _update_timers(delta: float) -> void:
+	_dash_time_left = maxf(_dash_time_left - delta, 0.0)
+	_dash_cooldown_left = maxf(_dash_cooldown_left - delta, 0.0)
+	_headbutt_cooldown_left = maxf(_headbutt_cooldown_left - delta, 0.0)
+	_jump_buffer_left = maxf(_jump_buffer_left - delta, 0.0)
 
-			dir = dir.normalized()
+	if Input.is_action_just_pressed("jump"):
+		_jump_buffer_left = jump_buffer_time
 
-			var rb := body as RigidBody3D
-			if rb:
-				rb.apply_central_impulse(dir * power)
 
-			if "hp" in body:
-				body.hp = 0
+func _update_floor_assistance(delta: float) -> void:
+	if Input.is_action_just_released("jump") and velocity.y > 0.0:
+		velocity.y *= 0.55
 
-			
+	if is_on_floor():
+		_coyote_time_left = coyote_time
+	else:
+		_coyote_time_left = maxf(_coyote_time_left - delta, 0.0)
+		velocity += get_gravity() * delta
 
-#func headbutt() -> void:
-	
+	if _jump_buffer_left > 0.0 and _coyote_time_left > 0.0:
+		velocity.y = jump_velocity
+		_jump_buffer_left = 0.0
+		_coyote_time_left = 0.0
+
+
+func _start_dash(move_direction: Vector3) -> void:
+	_dash_direction = move_direction
+	if _dash_direction == Vector3.ZERO:
+		_dash_direction = -transform.basis.z
+
+	_dash_direction.y = 0.0
+	_dash_direction = _dash_direction.normalized()
+	_dash_time_left = dash_duration
+	_dash_cooldown_left = dash_cooldown
+
+
+func _update_horizontal_velocity(move_direction: Vector3, delta: float) -> void:
+	var target_speed := sprint_speed if Input.is_action_pressed("sprint") else walk_speed
+	var target_velocity := move_direction * target_speed
+	var current_horizontal := Vector3(velocity.x, 0.0, velocity.z)
+	var acceleration := ground_acceleration
+
+	if not is_on_floor():
+		acceleration = air_acceleration
+	elif move_direction == Vector3.ZERO:
+		acceleration = ground_deceleration
+
+	current_horizontal = current_horizontal.move_toward(target_velocity, acceleration * delta)
+	velocity.x = current_horizontal.x
+	velocity.z = current_horizontal.z
+
+
+func _start_headbutt() -> void:
+	if _headbutt_cooldown_left > 0.0 or _headbutt_time >= 0.0:
+		return
+
+	_headbutt_time = 0.0
+	_headbutt_cooldown_left = headbutt_cooldown
+	_headbutt_has_hit = false
+
+
+func _update_headbutt(delta: float) -> Vector3:
+	if _headbutt_time < 0.0:
+		return Vector3.ZERO
+
+	_headbutt_time += delta
+	var progress := clampf(_headbutt_time / headbutt_duration, 0.0, 1.0)
+
+	if not _headbutt_has_hit and progress >= 0.42:
+		_perform_attack()
+		_headbutt_has_hit = true
+
+	var height_offset := 0.0
+	var forward_offset := 0.0
+	var pitch_offset := 0.0
+
+	if progress < 0.28:
+		var anticipation := _smoothstep(progress / 0.28)
+		height_offset = lerpf(0.0, headbutt_lift, anticipation)
+		forward_offset = lerpf(0.0, 0.035, anticipation)
+		pitch_offset = deg_to_rad(-headbutt_tilt_degrees * 0.45) * anticipation
+	elif progress < 0.5:
+		var strike := _smoothstep((progress - 0.28) / 0.22)
+		height_offset = lerpf(headbutt_lift, -headbutt_drop, strike)
+		forward_offset = lerpf(0.035, -headbutt_reach, strike)
+		pitch_offset = lerpf(
+			deg_to_rad(-headbutt_tilt_degrees * 0.45),
+			deg_to_rad(headbutt_tilt_degrees),
+			strike
+		)
+	else:
+		var recovery := _smoothstep((progress - 0.5) / 0.5)
+		height_offset = lerpf(-headbutt_drop, 0.0, recovery)
+		forward_offset = lerpf(-headbutt_reach, 0.0, recovery)
+		pitch_offset = lerpf(deg_to_rad(headbutt_tilt_degrees), 0.0, recovery)
+
+	if progress >= 1.0:
+		_headbutt_time = -1.0
+
+	return Vector3(height_offset, forward_offset, pitch_offset)
+
+
+func _perform_attack() -> void:
+	if not ray.is_colliding():
+		return
+
+	var body := ray.get_collider()
+	if body == null:
+		return
+
+	var hit_point := ray.get_collision_point()
+	var distance_to_hit := global_position.distance_to(hit_point)
+	var attack_power := impulse
+	if distance_to_hit <= close_distance:
+		attack_power *= close_multiplier
+
+	var hit_direction := hit_point - global_position
+	if hit_direction.length_squared() < 0.001:
+		hit_direction = -camera.global_transform.basis.z
+	hit_direction = hit_direction.normalized()
+
+	var rigid_body := body as RigidBody3D
+	if rigid_body:
+		rigid_body.apply_central_impulse(hit_direction * attack_power)
+
+	if "hp" in body:
+		body.hp = 0
+
+
+func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
+	var horizontal_speed := Vector2(velocity.x, velocity.z).length()
+	var speed_ratio := clampf(horizontal_speed / sprint_speed, 0.0, 1.0)
+	var is_moving_on_floor := is_on_floor() and horizontal_speed > 0.15
+
+	if is_moving_on_floor:
+		_bob_time += delta * bob_frequency * lerpf(1.0, 1.55, speed_ratio)
+	else:
+		_bob_time = lerpf(_bob_time, 0.0, _exp_weight(8.0, delta))
+
+	var bob_amount := lerpf(walk_bob_amount, sprint_bob_amount, speed_ratio)
+	var bob_offset := Vector3.ZERO
+	if is_moving_on_floor:
+		bob_offset.x = cos(_bob_time * PI) * bob_amount * 0.45
+		bob_offset.y = sin(_bob_time * TAU) * bob_amount
+
+	_landing_kick = lerpf(_landing_kick, 0.0, _exp_weight(12.0, delta))
+	_turn_roll_input = lerpf(_turn_roll_input, 0.0, _exp_weight(10.0, delta))
+
+	var strafe_roll := -_move_input.x * strafe_roll_degrees * speed_ratio
+	var target_roll := deg_to_rad(strafe_roll + _turn_roll_input)
+	var target_position := _camera_start_position + bob_offset
+	target_position.y += headbutt_pose.x - _landing_kick
+	target_position.z += headbutt_pose.y
+
+	var smoothing := _exp_weight(camera_smoothing, delta)
+	camera.position = camera.position.lerp(target_position, smoothing)
+	camera.rotation.x = lerp_angle(
+		camera.rotation.x,
+		_look_pitch + headbutt_pose.z + _landing_kick * 0.65,
+		smoothing
+	)
+	camera.rotation.z = lerp_angle(camera.rotation.z, target_roll, smoothing)
+
+	var target_fov := _camera_start_fov
+	if Input.is_action_pressed("sprint") and _move_input.y < 0.0:
+		target_fov += sprint_fov_boost * speed_ratio
+	if _dash_time_left > 0.0:
+		target_fov += dash_fov_boost
+	camera.fov = lerpf(camera.fov, target_fov, _exp_weight(8.0, delta))
+
+
+func _smoothstep(value: float) -> float:
+	var clamped := clampf(value, 0.0, 1.0)
+	return clamped * clamped * (3.0 - 2.0 * clamped)
+
+
+func _exp_weight(speed: float, delta: float) -> float:
+	return 1.0 - exp(-speed * delta)
