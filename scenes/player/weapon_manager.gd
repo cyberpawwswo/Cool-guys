@@ -3,6 +3,15 @@ extends Node3D
 
 signal weapon_changed(index: int, display_name: String)
 
+@export_category("Viewmodel Motion")
+@export var motion_smoothing := 16.0
+@export var sway_position_amount := 0.00045
+@export var sway_rotation_amount := 0.045
+@export var movement_lag_amount := 0.012
+@export var walk_bob_amount := 0.012
+@export var walk_bob_speed := 10.0
+@export var equip_drop := 0.22
+
 const WEAPON_DATA: Array[Dictionary] = [
 	{
 		"display_name": "Boomstick",
@@ -104,6 +113,12 @@ var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
 var _attack_cooldown_left := 0.0
 var _attack_variant := 0
+var _mouse_motion := Vector2.ZERO
+var _bob_time := 0.0
+var _equip_amount := 0.0
+var _sprint_amount := 0.0
+var _recoil_position := Vector3.ZERO
+var _recoil_rotation := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -114,6 +129,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
+	_update_viewmodel_motion(delta)
 
 	var animation_player := _animation_players[current_weapon_index]
 	if animation_player and not animation_player.is_playing():
@@ -124,6 +140,11 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		_mouse_motion += event.relative
+		_mouse_motion.x = clampf(_mouse_motion.x, -55.0, 55.0)
+		_mouse_motion.y = clampf(_mouse_motion.y, -40.0, 40.0)
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		var number_index := _number_key_to_index(event.physical_keycode)
 		if number_index >= 0:
@@ -159,6 +180,9 @@ func select_weapon(index: int, instant := false) -> void:
 	current_weapon_index = wrapped_index
 	_attack_cooldown_left = 0.0
 	_attack_variant = 0
+	_equip_amount = 1.0
+	_recoil_position = Vector3.ZERO
+	_recoil_rotation = Vector3.ZERO
 	_weapon_models[current_weapon_index].visible = not WEAPON_DATA[current_weapon_index]["hide_when_idle"]
 	_update_weapon_label()
 
@@ -183,8 +207,9 @@ func play_attack() -> bool:
 	var animation_name: StringName = attack_animations[_attack_variant % attack_animations.size()]
 	_attack_variant += 1
 	_weapon_models[current_weapon_index].visible = true
-	if not _play_animation(animation_name):
+	if not _play_animation(animation_name, 0.04):
 		return false
+	_apply_recoil()
 	_attack_cooldown_left = WEAPON_DATA[current_weapon_index]["cooldown"]
 	return true
 
@@ -194,7 +219,7 @@ func reload_current_weapon() -> void:
 		return
 
 	var reload_animation: StringName = WEAPON_DATA[current_weapon_index]["reload_animation"]
-	if not _play_animation(reload_animation):
+	if not _play_animation(reload_animation, 0.1):
 		return
 
 	var player := _animation_players[current_weapon_index]
@@ -235,7 +260,9 @@ func _create_weapon(index: int) -> void:
 
 	_weapon_slots.append(slot)
 	_weapon_models.append(model as Node3D)
-	_animation_players.append(_find_animation_player(model))
+	var animation_player := _find_animation_player(model)
+	_animation_players.append(animation_player)
+	_configure_idle_loop(index, animation_player)
 	slot.visible = false
 
 
@@ -244,6 +271,7 @@ func _prepare_imported_scene(model: Node) -> void:
 		imported_camera.current = false
 
 	for mesh: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		mesh.layers = 2
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mesh.extra_cull_margin = 100.0
 
@@ -360,6 +388,100 @@ func _create_material(
 	return material
 
 
+func _update_viewmodel_motion(delta: float) -> void:
+	var player := get_parent().get_parent() as CharacterBody3D
+	var local_velocity := Vector3.ZERO
+	var horizontal_speed := 0.0
+	var moving_on_floor := false
+	if player:
+		local_velocity = player.global_transform.basis.inverse() * player.velocity
+		horizontal_speed = Vector2(player.velocity.x, player.velocity.z).length()
+		moving_on_floor = player.is_on_floor() and horizontal_speed > 0.2
+
+	if moving_on_floor:
+		var speed_ratio := clampf(horizontal_speed / 9.0, 0.35, 1.0)
+		_bob_time += delta * walk_bob_speed * lerpf(0.85, 1.35, speed_ratio)
+
+	var bob := Vector3.ZERO
+	var bob_rotation := Vector3.ZERO
+	if moving_on_floor:
+		var speed_ratio := clampf(horizontal_speed / 9.0, 0.0, 1.0)
+		bob.x = sin(_bob_time) * walk_bob_amount * lerpf(0.7, 1.0, speed_ratio)
+		bob.y = -absf(cos(_bob_time)) * walk_bob_amount
+		bob_rotation.z = sin(_bob_time) * deg_to_rad(0.55)
+
+	var sprinting := (
+		moving_on_floor
+		and Input.is_action_pressed("sprint")
+		and local_velocity.z < -0.5
+	)
+	_sprint_amount = lerpf(
+		_sprint_amount,
+		1.0 if sprinting else 0.0,
+		_exp_weight(7.0 if sprinting else 11.0, delta)
+	)
+
+	var sway_position := Vector3(
+		-_mouse_motion.x * sway_position_amount,
+		_mouse_motion.y * sway_position_amount,
+		0.0
+	)
+	var sway_rotation := Vector3(
+		deg_to_rad(-_mouse_motion.y * sway_rotation_amount),
+		deg_to_rad(-_mouse_motion.x * sway_rotation_amount),
+		deg_to_rad(_mouse_motion.x * sway_rotation_amount * 0.35)
+	)
+	var movement_lag := Vector3(
+		-local_velocity.x * movement_lag_amount,
+		0.0,
+		absf(local_velocity.z) * movement_lag_amount * 0.18
+	)
+	var equip_offset := Vector3(0.06, -equip_drop, 0.08) * _equip_amount
+	var equip_rotation := Vector3(
+		deg_to_rad(5.0),
+		deg_to_rad(-3.0),
+		deg_to_rad(-5.0)
+	) * _equip_amount
+	var sprint_offset := Vector3(0.075, -0.105, 0.07) * _sprint_amount
+	var sprint_rotation := Vector3(
+		deg_to_rad(7.0),
+		deg_to_rad(-4.0),
+		deg_to_rad(-7.0)
+	) * _sprint_amount
+
+	var target_position := (
+		bob + sway_position + movement_lag + equip_offset + sprint_offset + _recoil_position
+	)
+	var target_rotation := (
+		bob_rotation + sway_rotation + equip_rotation + sprint_rotation + _recoil_rotation
+	)
+	var weight := _exp_weight(motion_smoothing, delta)
+	position = position.lerp(target_position, weight)
+	rotation.x = lerp_angle(rotation.x, target_rotation.x, weight)
+	rotation.y = lerp_angle(rotation.y, target_rotation.y, weight)
+	rotation.z = lerp_angle(rotation.z, target_rotation.z, weight)
+
+	_mouse_motion = _mouse_motion.lerp(Vector2.ZERO, _exp_weight(18.0, delta))
+	_equip_amount = lerpf(_equip_amount, 0.0, _exp_weight(8.0, delta))
+	_recoil_position = _recoil_position.lerp(Vector3.ZERO, _exp_weight(15.0, delta))
+	_recoil_rotation = _recoil_rotation.lerp(Vector3.ZERO, _exp_weight(18.0, delta))
+
+
+func _apply_recoil() -> void:
+	var recoil_scale := 0.75
+	if current_weapon_index in [0, 5]:
+		recoil_scale = 1.35
+	elif current_weapon_index in [1, 3]:
+		recoil_scale = 0.55
+	var side := -1.0 if _attack_variant % 2 == 0 else 1.0
+	_recoil_position += Vector3(side * 0.004, -0.006, 0.045) * recoil_scale
+	_recoil_rotation += Vector3(
+		deg_to_rad(2.1),
+		deg_to_rad(side * 0.35),
+		deg_to_rad(side * 0.45)
+	) * recoil_scale
+
+
 func _find_animation_player(model: Node) -> AnimationPlayer:
 	var players := model.find_children("*", "AnimationPlayer", true, false)
 	if players.is_empty():
@@ -367,7 +489,16 @@ func _find_animation_player(model: Node) -> AnimationPlayer:
 	return players[0] as AnimationPlayer
 
 
-func _play_animation(animation_name: StringName) -> bool:
+func _configure_idle_loop(index: int, player: AnimationPlayer) -> void:
+	if player == null:
+		return
+	var idle_animation: StringName = WEAPON_DATA[index]["idle_animation"]
+	if idle_animation.is_empty() or not player.has_animation(idle_animation):
+		return
+	player.get_animation(idle_animation).loop_mode = Animation.LOOP_LINEAR
+
+
+func _play_animation(animation_name: StringName, blend_time := 0.12) -> bool:
 	if animation_name.is_empty():
 		return false
 
@@ -375,7 +506,7 @@ func _play_animation(animation_name: StringName) -> bool:
 	if player == null or not player.has_animation(animation_name):
 		return false
 
-	player.play(animation_name)
+	player.play(animation_name, blend_time)
 	return true
 
 
@@ -408,3 +539,7 @@ func _number_key_to_index(keycode: Key) -> int:
 		KEY_6:
 			return 5
 	return -1
+
+
+func _exp_weight(speed: float, delta: float) -> float:
+	return 1.0 - exp(-speed * delta)

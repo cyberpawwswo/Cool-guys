@@ -22,6 +22,13 @@ target_position = Vector3(0, 0, -300)
 [node name="WeaponManager" type="Node3D" parent="Camera3D"]
 script = ExtResource("2_weapon")
 
+[node name="ViewmodelLight" type="DirectionalLight3D" parent="Camera3D"]
+rotation_degrees = Vector3(-18, 28, 0)
+light_color = Color(0.92, 0.95, 1, 1)
+light_energy = 0.55
+light_cull_mask = 2
+shadow_enabled = false
+
 [node name="Control" type="Control" parent="." unique_id=1117198956]
 layout_mode = 3
 anchors_preset = 15
@@ -60,15 +67,13 @@ text = "1  Boomstick"
 
 [node name="WeaponHint" type="Label" parent="Control"]
 layout_mode = 1
-anchors_preset = 3
+anchors_preset = 1
 anchor_left = 1.0
-anchor_top = 1.0
 anchor_right = 1.0
-anchor_bottom = 1.0
 offset_left = -330.0
-offset_top = -58.0
+offset_top = 24.0
 offset_right = -20.0
-offset_bottom = -20.0
+offset_bottom = 62.0
 grow_horizontal = 0
 grow_vertical = 0
 theme_override_colors/font_color = Color(1, 1, 1, 0.7)
