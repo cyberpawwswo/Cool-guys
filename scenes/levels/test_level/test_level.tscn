@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://odfdovr04410"]
+
+[ext_resource type="PackedScene" uid="uid://csrwnvgh81t7w" path="res://scenes/player/player.tscn" id="1_i0vk3"]
+[ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="3_uxvkn"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_kc65l"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_62kbb"]
+sky_material = SubResource("ProceduralSkyMaterial_kc65l")
+
+[sub_resource type="Environment" id="Environment_uxvkn"]
+background_mode = 2
+sky = SubResource("Sky_62kbb")
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0x52n"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m0omp"]
+albedo_color = Color(1, 0.45882353, 0.13725491, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_m7xwh"]
+material = SubResource("StandardMaterial3D_m0omp")
+
+[node name="TestLevel" type="Node3D" unique_id=39000370]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1959298490]
+environment = SubResource("Environment_uxvkn")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=572559508]
+transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
+shadow_enabled = true
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=322387064]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1655547297]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0)
+shape = SubResource("BoxShape3D_0x52n")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D" unique_id=2058816949]
+transform = Transform3D(10, 0, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0)
+mesh = SubResource("BoxMesh_m7xwh")
+
+[node name="Player" parent="." unique_id=1040782523 instance=ExtResource("1_i0vk3")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.9905577, 0)
+
+[node name="PauseMenu" parent="." unique_id=422567127 instance=ExtResource("3_uxvkn")]

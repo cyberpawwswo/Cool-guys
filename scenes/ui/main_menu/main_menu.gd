@@ -1,6 +1,6 @@
 extends Control
 
-@onready var game_scene := preload("res://scenes/ui/pause_menu/PauseMenu.tscn")
+@onready var game_scene := preload("res://scenes/levels/test_level/test_level.tscn")
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	pass # Replace with function body.
