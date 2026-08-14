@@ -35,8 +35,8 @@ extends CharacterBody3D
 @export var headbutt_cooldown := 0.5
 @export var headbutt_lift := 0.11
 @export var headbutt_drop := 0.08
-@export var headbutt_reach := 0.18
-@export var headbutt_tilt_degrees := 7.0
+@export var headbutt_reach := 0.32
+@export var headbutt_tilt_degrees := 12.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
