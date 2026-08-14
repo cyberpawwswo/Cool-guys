@@ -31,12 +31,14 @@ extends CharacterBody3D
 @export var close_distance := 2.0
 @export var close_multiplier := 3.0
 @export var impulse := 20.0
-@export var headbutt_duration := 0.38
-@export var headbutt_cooldown := 0.5
-@export var headbutt_lift := 0.11
+@export var headbutt_duration := 2.0
+@export var headbutt_cooldown := 2.25
+@export var headbutt_lift := 0.14
 @export var headbutt_drop := 0.08
 @export var headbutt_reach := 0.32
-@export var headbutt_tilt_degrees := 12.0
+@export var headbutt_windup_back := 0.14
+@export var headbutt_windup_tilt_degrees := 28.0
+@export var headbutt_tilt_degrees := 16.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
@@ -210,22 +212,22 @@ func _update_headbutt(delta: float) -> Vector3:
 	var forward_offset := 0.0
 	var pitch_offset := 0.0
 
-	if progress < 0.28:
-		var anticipation := _smoothstep(progress / 0.28)
+	if progress < 0.38:
+		var anticipation := _smoothstep(progress / 0.38)
 		height_offset = lerpf(0.0, headbutt_lift, anticipation)
-		forward_offset = lerpf(0.0, 0.035, anticipation)
-		pitch_offset = deg_to_rad(-headbutt_tilt_degrees * 0.45) * anticipation
-	elif progress < 0.5:
-		var strike := _smoothstep((progress - 0.28) / 0.22)
+		forward_offset = lerpf(0.0, headbutt_windup_back, anticipation)
+		pitch_offset = deg_to_rad(-headbutt_windup_tilt_degrees) * anticipation
+	elif progress < 0.52:
+		var strike := _smoothstep((progress - 0.38) / 0.14)
 		height_offset = lerpf(headbutt_lift, -headbutt_drop, strike)
-		forward_offset = lerpf(0.035, -headbutt_reach, strike)
+		forward_offset = lerpf(headbutt_windup_back, -headbutt_reach, strike)
 		pitch_offset = lerpf(
-			deg_to_rad(-headbutt_tilt_degrees * 0.45),
+			deg_to_rad(-headbutt_windup_tilt_degrees),
 			deg_to_rad(headbutt_tilt_degrees),
 			strike
 		)
 	else:
-		var recovery := _smoothstep((progress - 0.5) / 0.5)
+		var recovery := _smoothstep((progress - 0.52) / 0.48)
 		height_offset = lerpf(-headbutt_drop, 0.0, recovery)
 		forward_offset = lerpf(-headbutt_reach, 0.0, recovery)
 		pitch_offset = lerpf(deg_to_rad(headbutt_tilt_degrees), 0.0, recovery)
