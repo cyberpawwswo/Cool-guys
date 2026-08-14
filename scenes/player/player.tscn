@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://csrwnvgh81t7w"]
 
 [ext_resource type="Script" uid="uid://qjm6j41bdfws" path="res://scenes/player/player.gd" id="1_8afob"]
+[ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="2_dovo2"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
 
@@ -41,3 +42,5 @@ color = Color(1, 1, 1, 0.62352943)
 
 [node name="Node3D" type="Node3D" parent="." unique_id=508049726]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.51845044, -0.97542)
+
+[node name="PauseMenu" parent="." unique_id=1650188435 instance=ExtResource("2_dovo2")]
