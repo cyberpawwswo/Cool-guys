@@ -15,7 +15,9 @@ func _run_test() -> void:
 	root.add_child(player)
 	await process_frame
 
-	var manager := player.get_node_or_null("Camera3D/WeaponManager")
+	var manager := player.get_node_or_null(
+		"Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera/WeaponManager"
+	)
 	if manager == null:
 		_fail("WeaponManager is missing")
 		return
@@ -31,6 +33,14 @@ func _run_test() -> void:
 		if not manager.play_attack():
 			_fail("Weapon %d has no playable attack animation" % index)
 			return
+
+	var wheel_event := InputEventMouseButton.new()
+	wheel_event.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel_event.pressed = true
+	player._input(wheel_event)
+	if manager.get_current_weapon_name() != "Boomstick":
+		_fail("Mouse wheel input was not forwarded to the viewmodel")
+		return
 
 	print("WEAPON SYSTEM TEST PASSED: 6 weapons loaded and switched")
 	quit(0)

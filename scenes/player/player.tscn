@@ -6,6 +6,11 @@
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
 
+[sub_resource type="Environment" id="Environment_viewmodel"]
+ambient_light_source = 2
+ambient_light_color = Color(0.72, 0.76, 0.84, 1)
+ambient_light_energy = 1.35
+
 [node name="Player" type="CharacterBody3D" unique_id=1040782523]
 script = ExtResource("1_8afob")
 
@@ -19,16 +24,6 @@ near = 0.01
 [node name="RayCast3D" type="RayCast3D" parent="Camera3D" unique_id=724371325]
 target_position = Vector3(0, 0, -300)
 
-[node name="WeaponManager" type="Node3D" parent="Camera3D"]
-script = ExtResource("2_weapon")
-
-[node name="ViewmodelLight" type="DirectionalLight3D" parent="Camera3D"]
-rotation_degrees = Vector3(-18, 28, 0)
-light_color = Color(0.92, 0.95, 1, 1)
-light_energy = 0.55
-light_cull_mask = 2
-shadow_enabled = false
-
 [node name="Control" type="Control" parent="." unique_id=1117198956]
 layout_mode = 3
 anchors_preset = 15
@@ -36,6 +31,50 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+
+[node name="ViewmodelContainer" type="SubViewportContainer" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+stretch = true
+
+[node name="ViewmodelViewport" type="SubViewport" parent="Control/ViewmodelContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1152, 648)
+render_target_update_mode = 4
+own_world_3d = true
+
+[node name="ViewmodelCamera" type="Camera3D" parent="Control/ViewmodelContainer/ViewmodelViewport"]
+cull_mask = 2
+fov = 68.0
+near = 0.01
+
+[node name="ViewmodelEnvironment" type="WorldEnvironment" parent="Control/ViewmodelContainer/ViewmodelViewport"]
+environment = SubResource("Environment_viewmodel")
+
+[node name="WeaponManager" type="Node3D" parent="Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera"]
+script = ExtResource("2_weapon")
+
+[node name="ViewmodelKeyLight" type="OmniLight3D" parent="Control/ViewmodelContainer/ViewmodelViewport"]
+position = Vector3(0.55, 0.45, 0.15)
+light_color = Color(0.92, 0.95, 1, 1)
+light_energy = 3.2
+omni_range = 4.0
+light_cull_mask = 2
+shadow_enabled = false
+
+[node name="ViewmodelFillLight" type="OmniLight3D" parent="Control/ViewmodelContainer/ViewmodelViewport"]
+position = Vector3(-0.5, 0.1, 0.0)
+light_color = Color(1, 0.78, 0.62, 1)
+light_energy = 1.25
+omni_range = 3.0
+light_cull_mask = 2
+shadow_enabled = false
 
 [node name="ColorRect" type="ColorRect" parent="Control" unique_id=1946104556]
 layout_mode = 1

@@ -4,13 +4,13 @@ extends Node3D
 signal weapon_changed(index: int, display_name: String)
 
 @export_category("Viewmodel Motion")
-@export var motion_smoothing := 16.0
-@export var sway_position_amount := 0.00045
-@export var sway_rotation_amount := 0.045
-@export var movement_lag_amount := 0.012
-@export var walk_bob_amount := 0.012
-@export var walk_bob_speed := 10.0
-@export var equip_drop := 0.22
+@export var motion_smoothing := 19.0
+@export var sway_position_amount := 0.00018
+@export var sway_rotation_amount := 0.02
+@export var movement_lag_amount := 0.0035
+@export var walk_bob_amount := 0.006
+@export var walk_bob_speed := 9.0
+@export var equip_drop := 0.12
 
 const WEAPON_DATA: Array[Dictionary] = [
 	{
@@ -21,7 +21,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": &"Armature|Weild",
 		"idle_animation": StringName(),
 		"cooldown": 0.65,
-		"manual_scale": 1.05,
+		"manual_scale": 0.95,
 		"manual_position": Vector3(0.22, -0.58, -0.65),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
 		"use_imported_camera": false,
@@ -36,7 +36,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": &"rig|Equip",
 		"idle_animation": &"rig|Idle",
 		"cooldown": 0.12,
-		"manual_scale": 1.25,
+		"manual_scale": 1.1,
 		"manual_position": Vector3.ZERO,
 		"rotation_degrees": Vector3.ZERO,
 		"use_imported_camera": true,
@@ -51,7 +51,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
 		"cooldown": 0.35,
-		"manual_scale": 1.5,
+		"manual_scale": 1.35,
 		"manual_position": Vector3(0.27, -0.5, -0.58),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
 		"use_imported_camera": false,
@@ -66,7 +66,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": &"hud_skelet|Walk_001",
 		"cooldown": 0.14,
-		"manual_scale": 1.2,
+		"manual_scale": 1.1,
 		"manual_position": Vector3.ZERO,
 		"rotation_degrees": Vector3.ZERO,
 		"use_imported_camera": true,
@@ -81,7 +81,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
 		"cooldown": 0.55,
-		"manual_scale": 0.9,
+		"manual_scale": 0.85,
 		"manual_position": Vector3(0.12, -0.55, -0.72),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
 		"use_imported_camera": false,
@@ -96,7 +96,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": &"Armature|SG_FPS_Idle",
 		"cooldown": 1.0,
-		"manual_scale": 0.8,
+		"manual_scale": 0.72,
 		"manual_position": Vector3(0.14, -0.37, -0.72),
 		"rotation_degrees": Vector3.ZERO,
 		"use_imported_camera": false,
@@ -105,7 +105,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 	},
 ]
 
-@onready var weapon_label: Label = get_node_or_null("../../Control/WeaponLabel")
+@onready var weapon_label: Label = _get_player().get_node_or_null("Control/WeaponLabel")
 
 var current_weapon_index := 0
 var _weapon_slots: Array[Node3D] = []
@@ -139,7 +139,7 @@ func _process(delta: float) -> void:
 			_play_current_idle()
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func handle_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_mouse_motion += event.relative
 		_mouse_motion.x = clampf(_mouse_motion.x, -55.0, 55.0)
@@ -149,18 +149,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		var number_index := _number_key_to_index(event.physical_keycode)
 		if number_index >= 0:
 			select_weapon(number_index)
-			get_viewport().set_input_as_handled()
+			_get_player().get_viewport().set_input_as_handled()
 		elif event.physical_keycode == KEY_R:
 			reload_current_weapon()
-			get_viewport().set_input_as_handled()
+			_get_player().get_viewport().set_input_as_handled()
 
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			select_weapon(current_weapon_index - 1)
-			get_viewport().set_input_as_handled()
+			_get_player().get_viewport().set_input_as_handled()
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			select_weapon(current_weapon_index + 1)
-			get_viewport().set_input_as_handled()
+			_get_player().get_viewport().set_input_as_handled()
 
 
 func select_weapon(index: int, instant := false) -> void:
@@ -389,7 +389,7 @@ func _create_material(
 
 
 func _update_viewmodel_motion(delta: float) -> void:
-	var player := get_parent().get_parent() as CharacterBody3D
+	var player := _get_player()
 	var local_velocity := Vector3.ZERO
 	var horizontal_speed := 0.0
 	var moving_on_floor := false
@@ -442,11 +442,11 @@ func _update_viewmodel_motion(delta: float) -> void:
 		deg_to_rad(-3.0),
 		deg_to_rad(-5.0)
 	) * _equip_amount
-	var sprint_offset := Vector3(0.075, -0.105, 0.07) * _sprint_amount
+	var sprint_offset := Vector3(0.035, -0.055, 0.025) * _sprint_amount
 	var sprint_rotation := Vector3(
-		deg_to_rad(7.0),
-		deg_to_rad(-4.0),
-		deg_to_rad(-7.0)
+		deg_to_rad(3.0),
+		deg_to_rad(-2.0),
+		deg_to_rad(-3.0)
 	) * _sprint_amount
 
 	var target_position := (
@@ -474,11 +474,11 @@ func _apply_recoil() -> void:
 	elif current_weapon_index in [1, 3]:
 		recoil_scale = 0.55
 	var side := -1.0 if _attack_variant % 2 == 0 else 1.0
-	_recoil_position += Vector3(side * 0.004, -0.006, 0.045) * recoil_scale
+	_recoil_position += Vector3(side * 0.002, -0.003, 0.025) * recoil_scale
 	_recoil_rotation += Vector3(
-		deg_to_rad(2.1),
-		deg_to_rad(side * 0.35),
-		deg_to_rad(side * 0.45)
+		deg_to_rad(1.15),
+		deg_to_rad(side * 0.2),
+		deg_to_rad(side * 0.25)
 	) * recoil_scale
 
 
@@ -539,6 +539,10 @@ func _number_key_to_index(keycode: Key) -> int:
 		KEY_6:
 			return 5
 	return -1
+
+
+func _get_player() -> CharacterBody3D:
+	return owner as CharacterBody3D
 
 
 func _exp_weight(speed: float, delta: float) -> float:

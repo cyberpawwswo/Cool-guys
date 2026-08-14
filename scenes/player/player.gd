@@ -42,7 +42,7 @@ extends CharacterBody3D
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
-@onready var weapon_manager = $Camera3D/WeaponManager
+@onready var weapon_manager = $Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera/WeaponManager
 
 var _camera_start_position := Vector3.ZERO
 var _camera_start_fov := 75.0
@@ -74,6 +74,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	weapon_manager.handle_input(event)
+
 	if event.is_action_pressed("ui_cancel"):
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 		return
