@@ -57,7 +57,7 @@ func _process(delta: float) -> void:
 		var body = $Camera3D/RayCast3D.get_collider()
 		if Input.is_action_just_pressed('attack'):
 			if body is RigidBody3D:
-				var impulse = body.global_position - get_parent().global_position
+				var impulse = body.global_position - global_position
 				impulse = impulse.normalized() 
 				body.apply_central_impulse(impulse*100)
 			if "hp" in body:
