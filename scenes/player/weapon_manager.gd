@@ -12,9 +12,12 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": &"Armature|Weild",
 		"idle_animation": StringName(),
 		"cooldown": 0.65,
-		"view_size": 1.15,
-		"view_center": Vector3(0.12, -0.24, -0.68),
-		"rotation_degrees": Vector3.ZERO,
+		"manual_scale": 1.05,
+		"manual_position": Vector3(0.22, -0.58, -0.65),
+		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
+		"use_imported_camera": false,
+		"view_offset": Vector3.ZERO,
+		"hide_when_idle": false,
 	},
 	{
 		"display_name": "Uzi",
@@ -24,9 +27,12 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": &"rig|Equip",
 		"idle_animation": &"rig|Idle",
 		"cooldown": 0.12,
-		"view_size": 0.9,
-		"view_center": Vector3(0.14, -0.2, -0.58),
+		"manual_scale": 1.25,
+		"manual_position": Vector3.ZERO,
 		"rotation_degrees": Vector3.ZERO,
+		"use_imported_camera": true,
+		"view_offset": Vector3(0.12, -0.3, -0.5),
+		"hide_when_idle": false,
 	},
 	{
 		"display_name": "Beretta",
@@ -36,9 +42,12 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
 		"cooldown": 0.35,
-		"view_size": 0.82,
-		"view_center": Vector3(0.16, -0.21, -0.56),
-		"rotation_degrees": Vector3.ZERO,
+		"manual_scale": 1.5,
+		"manual_position": Vector3(0.27, -0.5, -0.58),
+		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
+		"use_imported_camera": false,
+		"view_offset": Vector3.ZERO,
+		"hide_when_idle": false,
 	},
 	{
 		"display_name": "AKS-74",
@@ -46,11 +55,14 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"attack_animations": [&"hud_skelet|Shot"],
 		"reload_animation": &"hud_skelet|Reload_f",
 		"equip_animation": StringName(),
-		"idle_animation": StringName(),
+		"idle_animation": &"hud_skelet|Walk_001",
 		"cooldown": 0.14,
-		"view_size": 1.0,
-		"view_center": Vector3(0.12, -0.2, -0.65),
-		"rotation_degrees": Vector3(0.0, -90.0, 0.0),
+		"manual_scale": 1.2,
+		"manual_position": Vector3.ZERO,
+		"rotation_degrees": Vector3.ZERO,
+		"use_imported_camera": true,
+		"view_offset": Vector3(0.15, -0.32, -0.62),
+		"hide_when_idle": false,
 	},
 	{
 		"display_name": "Leg Kick",
@@ -60,9 +72,12 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
 		"cooldown": 0.55,
-		"view_size": 0.95,
-		"view_center": Vector3(0.0, -0.28, -0.7),
-		"rotation_degrees": Vector3.ZERO,
+		"manual_scale": 0.9,
+		"manual_position": Vector3(0.12, -0.55, -0.72),
+		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
+		"use_imported_camera": false,
+		"view_offset": Vector3.ZERO,
+		"hide_when_idle": true,
 	},
 	{
 		"display_name": "Remington",
@@ -72,9 +87,12 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"equip_animation": StringName(),
 		"idle_animation": &"Armature|SG_FPS_Idle",
 		"cooldown": 1.0,
-		"view_size": 1.05,
-		"view_center": Vector3(0.12, -0.23, -0.64),
+		"manual_scale": 0.8,
+		"manual_position": Vector3(0.14, -0.37, -0.72),
 		"rotation_degrees": Vector3.ZERO,
+		"use_imported_camera": false,
+		"view_offset": Vector3.ZERO,
+		"hide_when_idle": false,
 	},
 ]
 
@@ -82,6 +100,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 
 var current_weapon_index := 0
 var _weapon_slots: Array[Node3D] = []
+var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
 var _attack_cooldown_left := 0.0
 var _attack_variant := 0
@@ -98,7 +117,10 @@ func _process(delta: float) -> void:
 
 	var animation_player := _animation_players[current_weapon_index]
 	if animation_player and not animation_player.is_playing():
-		_play_current_idle()
+		if WEAPON_DATA[current_weapon_index]["hide_when_idle"]:
+			_weapon_models[current_weapon_index].visible = false
+		else:
+			_play_current_idle()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -137,6 +159,7 @@ func select_weapon(index: int, instant := false) -> void:
 	current_weapon_index = wrapped_index
 	_attack_cooldown_left = 0.0
 	_attack_variant = 0
+	_weapon_models[current_weapon_index].visible = not WEAPON_DATA[current_weapon_index]["hide_when_idle"]
 	_update_weapon_label()
 
 	var equip_animation: StringName = WEAPON_DATA[current_weapon_index]["equip_animation"]
@@ -159,6 +182,7 @@ func play_attack() -> bool:
 
 	var animation_name: StringName = attack_animations[_attack_variant % attack_animations.size()]
 	_attack_variant += 1
+	_weapon_models[current_weapon_index].visible = true
 	if not _play_animation(animation_name):
 		return false
 	_attack_cooldown_left = WEAPON_DATA[current_weapon_index]["cooldown"]
@@ -200,10 +224,17 @@ func _create_weapon(index: int) -> void:
 	var weapon_scene: PackedScene = data["scene"]
 	var model := weapon_scene.instantiate()
 	pivot.add_child(model)
+	_apply_asset_fixes(index, model)
+	if data["use_imported_camera"]:
+		_align_to_imported_camera(pivot, model)
+		slot.position = data["view_offset"]
+	else:
+		slot.position = data["manual_position"]
+	slot.scale = Vector3.ONE * float(data["manual_scale"])
 	_prepare_imported_scene(model)
-	_fit_weapon_to_view(slot, float(data["view_size"]), data["view_center"])
 
 	_weapon_slots.append(slot)
+	_weapon_models.append(model as Node3D)
 	_animation_players.append(_find_animation_player(model))
 	slot.visible = false
 
@@ -214,31 +245,119 @@ func _prepare_imported_scene(model: Node) -> void:
 
 	for mesh: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh.extra_cull_margin = 100.0
 
 
-func _fit_weapon_to_view(slot: Node3D, target_size: float, target_center: Vector3) -> void:
-	var bounds := _calculate_bounds(slot)
-	var longest_side := maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
-	if longest_side <= 0.00001:
+func _align_to_imported_camera(pivot: Node3D, model: Node) -> void:
+	var cameras := model.find_children("*", "Camera3D", true, false)
+	if cameras.is_empty():
 		return
 
-	var scale_factor := target_size / longest_side
-	slot.scale = Vector3.ONE * scale_factor
-	slot.position = target_center - bounds.get_center() * scale_factor
+	var imported_camera := cameras[0] as Camera3D
+	var camera_in_pivot_space := pivot.global_transform.affine_inverse() * imported_camera.global_transform
+	pivot.transform = camera_in_pivot_space.affine_inverse()
 
 
-func _calculate_bounds(slot: Node3D) -> AABB:
-	var bounds := AABB()
-	var has_bounds := false
-	for mesh: MeshInstance3D in slot.find_children("*", "MeshInstance3D", true, false):
-		var relative_transform := slot.global_transform.affine_inverse() * mesh.global_transform
-		var mesh_bounds: AABB = relative_transform * mesh.get_aabb()
-		if has_bounds:
-			bounds = bounds.merge(mesh_bounds)
-		else:
-			bounds = mesh_bounds
-			has_bounds = true
-	return bounds
+func _apply_asset_fixes(index: int, model: Node) -> void:
+	match index:
+		1:
+			_hide_node(model, "Aim")
+			_hide_node(model, "Background2")
+			_set_surface_material(model, "Mesh", 0, _create_material(
+				"res://assets/weapons/uzi/textures/Face_Basecolor.png",
+				"res://assets/weapons/uzi/textures/Face_Normal.png"
+			))
+			_set_surface_material(model, "Mesh", 1, _create_material(
+				"res://assets/weapons/uzi/textures/Cloths_BaseColor.1002.png",
+				"res://assets/weapons/uzi/textures/Cloths_Normal.1002.png",
+				"res://assets/weapons/uzi/textures/Cloths_Roughness.1002.png",
+				"res://assets/weapons/uzi/textures/Cloths_Metallic.1002.png"
+			))
+			_set_surface_material(model, "Mesh", 2, _create_material(
+				"res://assets/weapons/uzi/textures/Watch_BaseColor.1004.png",
+				"res://assets/weapons/uzi/textures/Watch_Normal.1004.png",
+				"res://assets/weapons/uzi/textures/Watch_Roughness.1004.png",
+				"res://assets/weapons/uzi/textures/Watch_Metallic.1004.png"
+			))
+			_set_surface_material(model, "Mesh", 3, _create_material(
+				"res://assets/weapons/uzi/textures/Watch_BaseColor.1004.png",
+				"res://assets/weapons/uzi/textures/Watch_Normal.1004.png",
+				"res://assets/weapons/uzi/textures/Watch_Roughness.1004.png",
+				"res://assets/weapons/uzi/textures/Watch_Metallic.1004.png"
+			))
+			_set_surface_material(model, "Mesh", 4, _create_material(
+				"res://assets/weapons/uzi/textures/Gloves_BaseColor.1003.png",
+				"res://assets/weapons/uzi/textures/Gloves_Normal.1003.png",
+				"res://assets/weapons/uzi/textures/Gloves_Roughness.1003.png",
+				"res://assets/weapons/uzi/textures/Gloves_Metallic.1003.png"
+			))
+			_set_surface_material(model, "UZI", 0, _create_material(
+				"res://assets/weapons/uzi/textures/UZI_Base_color.png",
+				"res://assets/weapons/uzi/textures/UZI_Normal_OpenGL.png",
+				"res://assets/weapons/uzi/textures/UZI_Roughness.png",
+				"res://assets/weapons/uzi/textures/UZI_Metallic.png"
+			))
+			_set_surface_material(model, "UZI", 1, _create_material(
+				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Base_color.png",
+				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Normal_OpenGL.png",
+				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Roughness.png",
+				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Metallic.png"
+			))
+		3:
+			_hide_node(model, "shape_hand_ik_l")
+			_hide_node(model, "shape_hand_ik_r")
+			var hands_material := _create_material(
+				"res://assets/weapons/aks74/textures/act_arm_perchatka.png"
+			)
+			var weapon_material := _create_material(
+				"res://assets/weapons/aks74/textures/wpn_ak74.png"
+			)
+			var attachment_material := StandardMaterial3D.new()
+			attachment_material.albedo_color = Color(0.12, 0.13, 0.14)
+			attachment_material.metallic = 0.65
+			attachment_material.roughness = 0.42
+			_set_surface_material(model, "hud_mesh", 0, hands_material)
+			_set_surface_material(model, "hud_mesh", 1, weapon_material)
+			for surface in range(2, 4):
+				_set_surface_material(model, "hud_mesh", surface, attachment_material)
+
+
+func _hide_node(model: Node, node_name: String) -> void:
+	var found := model.find_child(node_name, true, false) as Node3D
+	if found:
+		found.visible = false
+
+
+func _set_surface_material(
+	model: Node,
+	mesh_name: String,
+	surface: int,
+	material: StandardMaterial3D
+) -> void:
+	var mesh_instance := model.find_child(mesh_name, true, false) as MeshInstance3D
+	if mesh_instance == null or mesh_instance.mesh == null:
+		return
+	if surface < 0 or surface >= mesh_instance.mesh.get_surface_count():
+		return
+	mesh_instance.set_surface_override_material(surface, material)
+
+
+func _create_material(
+	albedo_path: String,
+	normal_path := "",
+	roughness_path := "",
+	metallic_path := ""
+) -> StandardMaterial3D:
+	var material := StandardMaterial3D.new()
+	material.albedo_texture = load(albedo_path) as Texture2D
+	if not normal_path.is_empty():
+		material.normal_enabled = true
+		material.normal_texture = load(normal_path) as Texture2D
+	if not roughness_path.is_empty():
+		material.roughness_texture = load(roughness_path) as Texture2D
+	if not metallic_path.is_empty():
+		material.metallic_texture = load(metallic_path) as Texture2D
+	return material
 
 
 func _find_animation_player(model: Node) -> AnimationPlayer:
