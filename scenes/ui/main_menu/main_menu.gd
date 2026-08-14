@@ -2,12 +2,57 @@ extends Control
 
 @onready var game_scene := preload("res://scenes/levels/test_level/test_level.tscn")
 @onready var title: Label = $CenterContainer/VBoxContainer/Title
+@onready var subtitle: Label = $CenterContainer/VBoxContainer/Subtitle
+@onready var footer: Label = $Footer
+
+var _blood_time := 0.0
+var _buttons: Array[Button] = []
+var _normal_styles: Array[StyleBoxFlat] = []
+var _hover_styles: Array[StyleBoxFlat] = []
 
 func _ready() -> void:
+	_gather_styles()
 	_fade_in_menu()
 	_setup_button_effects()
-	_animate_title()
 	$CenterContainer/VBoxContainer/PlayButton.grab_focus()
+
+
+func _process(delta: float) -> void:
+	_blood_time += delta
+	_apply_blood_style()
+
+
+func _apply_blood_style() -> void:
+	var pulse := 0.5 + 0.5 * sin(_blood_time * 2.2)
+	var bright := Color(0.95, 0.15, 0.18, 1.0)
+	var dim := Color(0.5, 0.02, 0.04, 1.0)
+
+	var title_color := bright.lerp(Color(1.0, 0.4, 0.45, 1.0), pulse * 0.6)
+	title.add_theme_color_override("font_color", title_color)
+	title.add_theme_color_override("font_shadow_color", Color(0.35, 0.0, 0.01, 0.9))
+	title.rotation = sin(_blood_time * 2.6) * 0.03
+	title.scale = Vector2.ONE * (1.0 + sin(_blood_time * 2.2) * 0.025)
+
+	subtitle.add_theme_color_override(
+		"font_color", Color(0.75, 0.3, 0.32, 0.9)
+	)
+
+	footer.add_theme_color_override(
+		"font_color", Color(0.6, 0.2, 0.22, 0.45)
+	)
+
+	for i in _normal_styles.size():
+		var border := dim.lerp(bright, pulse)
+		_normal_styles[i].border_color = border
+		_hover_styles[i].border_color = bright
+
+
+func _gather_styles() -> void:
+	for child in $CenterContainer/VBoxContainer.get_children():
+		if child is Button:
+			_buttons.append(child)
+			_normal_styles.append(child.get_theme_stylebox("normal") as StyleBoxFlat)
+			_hover_styles.append(child.get_theme_stylebox("hover") as StyleBoxFlat)
 
 
 func _fade_in_menu() -> void:
@@ -19,21 +64,12 @@ func _fade_in_menu() -> void:
 
 
 func _setup_button_effects() -> void:
-	var buttons := $CenterContainer/VBoxContainer.get_children().filter(func(c): return c is Button)
-	for button in buttons:
+	for button in _buttons:
 		button.mouse_entered.connect(_on_button_hovered.bind(button))
 		button.mouse_exited.connect(_on_button_unhovered.bind(button))
 		button.resized.connect(_update_pivot.bind(button))
 		_update_pivot(button)
 	_update_pivot(title)
-
-
-func _animate_title() -> void:
-	var tween := create_tween().set_loops()
-	var grow := tween.tween_property(title, "scale", Vector2(1.03, 1.03), 1.8)
-	grow.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	var shrink := tween.tween_property(title, "scale", Vector2.ONE, 1.8)
-	shrink.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 
 func _update_pivot(node: Control) -> void:

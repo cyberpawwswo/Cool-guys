@@ -1,19 +1,64 @@
 extends Control
 
 @onready var exit_the_menu := load("res://scenes/ui/main_menu/main_menu.tscn")
+@onready var title: Label = $CenterContainer/VBoxContainer/Title
+
+var _blood_time := 0.0
+var _buttons: Array[Button] = []
+var _normal_styles: Array[StyleBoxFlat] = []
+var _hover_styles: Array[StyleBoxFlat] = []
 
 func _ready() -> void:
 	# Разрешаем узлу работать, даже когда вся игра на паузе
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	# Прячем меню при старте уровня
 	visible = false
+	_gather_styles()
+	_setup_button_effects()
 
-	var buttons := $CenterContainer/VBoxContainer.get_children().filter(func(c): return c is Button)
-	for button in buttons:
+
+func _process(delta: float) -> void:
+	if not visible:
+		return
+	_blood_time += delta
+	_apply_blood_style()
+
+
+func _apply_blood_style() -> void:
+	var pulse := 0.5 + 0.5 * sin(_blood_time * 2.2)
+	var bright := Color(0.95, 0.15, 0.18, 1.0)
+	var dim := Color(0.5, 0.02, 0.04, 1.0)
+
+	var title_color := bright.lerp(Color(1.0, 0.4, 0.45, 1.0), pulse * 0.6)
+	title.add_theme_color_override("font_color", title_color)
+	title.add_theme_color_override("font_shadow_color", Color(0.35, 0.0, 0.01, 0.9))
+	title.rotation = sin(_blood_time * 2.6) * 0.03
+
+	for i in _normal_styles.size():
+		var border := dim.lerp(bright, pulse)
+		_normal_styles[i].border_color = border
+		_hover_styles[i].border_color = bright
+
+
+func _gather_styles() -> void:
+	for child in $CenterContainer/VBoxContainer.get_children():
+		if child is Button:
+			_buttons.append(child)
+			_normal_styles.append(child.get_theme_stylebox("normal") as StyleBoxFlat)
+			_hover_styles.append(child.get_theme_stylebox("hover") as StyleBoxFlat)
+
+
+func _setup_button_effects() -> void:
+	for button in _buttons:
 		button.mouse_entered.connect(_on_button_hovered.bind(button))
 		button.mouse_exited.connect(_on_button_unhovered.bind(button))
 		button.resized.connect(_update_pivot.bind(button))
 		_update_pivot(button)
+
+
+func _update_pivot(node: Control) -> void:
+	node.pivot_offset = node.size / 2.0
+
 
 func _input(event: InputEvent) -> void:
 	# ui_cancel по умолчанию привязан к Esc
@@ -34,9 +79,6 @@ func toggle_pause() -> void:
 
 	# Опционально: показываем/прячем курсор во время паузы
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if is_paused else Input.MOUSE_MODE_CAPTURED
-
-func _update_pivot(node: Control) -> void:
-	node.pivot_offset = node.size / 2.0
 
 func _on_button_hovered(button: Button) -> void:
 	var tween := create_tween()

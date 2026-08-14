@@ -214,7 +214,7 @@ func _update_headbutt(delta: float) -> Vector3:
 	var progress := clampf(_headbutt_time / headbutt_duration, 0.0, 1.0)
 
 	if not _headbutt_has_hit and progress >= 0.42:
-		_perform_attack()
+		_perform_attack(true)
 		_headbutt_has_hit = true
 
 	var height_offset := 0.0
@@ -247,7 +247,7 @@ func _update_headbutt(delta: float) -> Vector3:
 	return Vector3(height_offset, forward_offset, pitch_offset)
 
 
-func _perform_attack() -> void:
+func _perform_attack(close_only := false) -> void:
 	if not ray.is_colliding():
 		return
 
@@ -257,6 +257,8 @@ func _perform_attack() -> void:
 
 	var hit_point := ray.get_collision_point()
 	var distance_to_hit := global_position.distance_to(hit_point)
+	if close_only and distance_to_hit > close_distance:
+		return
 	var attack_power := impulse
 	if distance_to_hit <= close_distance:
 		attack_power *= close_multiplier
