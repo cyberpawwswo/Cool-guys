@@ -42,6 +42,7 @@ extends CharacterBody3D
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
+@onready var weapon_manager = $Camera3D/WeaponManager
 
 var _camera_start_position := Vector3.ZERO
 var _camera_start_fov := 75.0
@@ -128,6 +129,9 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("attack") and not _suppress_attack_this_frame:
+		if weapon_manager.play_attack():
+			_perform_attack()
+	if Input.is_action_just_pressed("strong_attack"):
 		_start_headbutt()
 	_suppress_attack_this_frame = false
 
