@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://cerw5dsrvesfx"]
+
+[ext_resource type="Script" uid="uid://o2h3f1n18gch" path="res://scenes/ui/pause_menu/pause_menu.gd" id="1_l7gtd"]
+[ext_resource type="PackedScene" uid="uid://bo48vpl8xntiy" path="res://scenes/ui/main_menu/main_menu.tscn" id="2_36d5w"]
+
+[node name="PauseMenu" type="Control" unique_id=422567127]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_l7gtd")
+exit_the_menu = ExtResource("2_36d5w")
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1306257018]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer" unique_id=778397238]
+layout_mode = 2
+
+[node name="ResumeButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1334441369]
+layout_mode = 2
+text = "Продолжить"
+
+[node name="ExitTheMenuButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=308650221]
+layout_mode = 2
+text = "Выйти в меню"
+
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ResumeButton" to="." method="_on_resume_button_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ExitTheMenuButton" to="." method="_on_exit_the_menu_button_pressed"]
