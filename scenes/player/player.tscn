@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://qjm6j41bdfws" path="res://scenes/player/player.gd" id="1_8afob"]
 [ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="2_dovo2"]
-[ext_resource type="Script" path="res://scenes/player/weapon_manager.gd" id="2_weapon"]
+[ext_resource type="Script" uid="uid://ff5cr1c4rnjo" path="res://scenes/player/weapon_manager.gd" id="2_weapon"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
 
@@ -32,7 +32,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="ViewmodelContainer" type="SubViewportContainer" parent="Control"]
+[node name="ViewmodelContainer" type="SubViewportContainer" parent="Control" unique_id=1336958794]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -42,39 +42,37 @@ grow_vertical = 2
 mouse_filter = 2
 stretch = true
 
-[node name="ViewmodelViewport" type="SubViewport" parent="Control/ViewmodelContainer"]
+[node name="ViewmodelViewport" type="SubViewport" parent="Control/ViewmodelContainer" unique_id=450722033]
+own_world_3d = true
 transparent_bg = true
 handle_input_locally = false
 size = Vector2i(1152, 648)
 render_target_update_mode = 4
-own_world_3d = true
 
-[node name="ViewmodelCamera" type="Camera3D" parent="Control/ViewmodelContainer/ViewmodelViewport"]
+[node name="ViewmodelCamera" type="Camera3D" parent="Control/ViewmodelContainer/ViewmodelViewport" unique_id=1628163763]
 cull_mask = 2
 fov = 68.0
 near = 0.01
 
-[node name="ViewmodelEnvironment" type="WorldEnvironment" parent="Control/ViewmodelContainer/ViewmodelViewport"]
-environment = SubResource("Environment_viewmodel")
-
-[node name="WeaponManager" type="Node3D" parent="Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera"]
+[node name="WeaponManager" type="Node3D" parent="Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera" unique_id=432789161]
 script = ExtResource("2_weapon")
 
-[node name="ViewmodelKeyLight" type="OmniLight3D" parent="Control/ViewmodelContainer/ViewmodelViewport"]
-position = Vector3(0.55, 0.45, 0.15)
+[node name="ViewmodelEnvironment" type="WorldEnvironment" parent="Control/ViewmodelContainer/ViewmodelViewport" unique_id=459016776]
+environment = SubResource("Environment_viewmodel")
+
+[node name="ViewmodelKeyLight" type="OmniLight3D" parent="Control/ViewmodelContainer/ViewmodelViewport" unique_id=326965807]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 0.45, 0.15)
 light_color = Color(0.92, 0.95, 1, 1)
 light_energy = 3.2
-omni_range = 4.0
 light_cull_mask = 2
-shadow_enabled = false
+omni_range = 4.0
 
-[node name="ViewmodelFillLight" type="OmniLight3D" parent="Control/ViewmodelContainer/ViewmodelViewport"]
-position = Vector3(-0.5, 0.1, 0.0)
+[node name="ViewmodelFillLight" type="OmniLight3D" parent="Control/ViewmodelContainer/ViewmodelViewport" unique_id=2137697301]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0.1, 0)
 light_color = Color(1, 0.78, 0.62, 1)
 light_energy = 1.25
-omni_range = 3.0
 light_cull_mask = 2
-shadow_enabled = false
+omni_range = 3.0
 
 [node name="ColorRect" type="ColorRect" parent="Control" unique_id=1946104556]
 layout_mode = 1
@@ -91,7 +89,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(1, 1, 1, 0.62352943)
 
-[node name="WeaponLabel" type="Label" parent="Control"]
+[node name="WeaponLabel" type="Label" parent="Control" unique_id=248000716]
 layout_mode = 0
 offset_left = 24.0
 offset_top = 20.0
@@ -104,7 +102,7 @@ theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 22
 text = "1  Boomstick"
 
-[node name="WeaponHint" type="Label" parent="Control"]
+[node name="WeaponHint" type="Label" parent="Control" unique_id=1749415222]
 layout_mode = 1
 anchors_preset = 1
 anchor_left = 1.0

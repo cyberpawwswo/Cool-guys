@@ -24,6 +24,10 @@ window/stretch/aspect="expand"
 
 project/assembly_name="Cool-guys"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/voronoishatter/plugin.cfg")
+
 [input]
 
 move_forward={

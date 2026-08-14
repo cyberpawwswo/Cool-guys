@@ -130,7 +130,10 @@ func _physics_process(delta: float) -> void:
 
 
 func _process(delta: float) -> void:
+	printerr('12245')
 	if Input.is_action_just_pressed("attack") and not _suppress_attack_this_frame:
+		$"../Destruction".destruction()
+		
 		if weapon_manager.play_attack():
 			_perform_attack()
 	if Input.is_action_just_pressed("strong_attack"):
