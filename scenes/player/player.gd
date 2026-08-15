@@ -26,6 +26,7 @@ extends CharacterBody3D
 @export var strafe_roll_degrees := 1.8
 @export var turn_roll_degrees := 1.25
 @export var sprint_fov_boost := 4.0
+@export var weapon_recoil_recovery := 10.0
 
 @export_category("Headbutt")
 @export var close_distance := 2.0
@@ -50,6 +51,7 @@ extends CharacterBody3D
 @onready var weapon_manager = $Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera/WeaponManager
 @onready var gray_filter: ColorRect = $Effects/GrayFilter
 @onready var blink_overlay: ColorRect = $Effects/BlinkOverlay
+@onready var shot_flash: ColorRect = $Effects/ShotFlash
 @onready var pause_menu: Control = $PauseMenus/PauseMenu
 @onready var pause_menu_bw: Control = $PauseMenus/PauseMenuBW
 
@@ -61,6 +63,14 @@ var _move_input := Vector2.ZERO
 var _bob_time := 0.0
 var _landing_kick := 0.0
 var _was_on_floor := false
+var _weapon_recoil_pitch := 0.0
+var _weapon_recoil_yaw := 0.0
+var _weapon_recoil_roll := 0.0
+var _weapon_recoil_fov := 0.0
+var _weapon_shake_time := 0.0
+var _weapon_shake_strength := 0.0
+var _weapon_shake_phase := 0.0
+var _shot_flash_alpha := 0.0
 
 var _dash_time_left := 0.0
 var _dash_cooldown_left := 0.0
@@ -86,6 +96,7 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	gray_filter.visible = false
 	blink_overlay.color.a = 0.0
+	shot_flash.color.a = 0.0
 	pause_menu_bw.visible = false
 
 
@@ -190,10 +201,34 @@ func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("black_white"):
 		_toggle_black_white_mode()
 	_update_blink(delta)
+	_update_shot_flash(delta)
 	_suppress_attack_this_frame = false
 
 	var headbutt_pose := _update_headbutt(delta)
 	_update_camera(delta, headbutt_pose)
+
+
+func apply_weapon_recoil(strength: float) -> void:
+	_weapon_recoil_pitch = minf(
+		_weapon_recoil_pitch + deg_to_rad(4.5) * strength,
+		deg_to_rad(8.0)
+	)
+	_weapon_recoil_yaw += deg_to_rad(randf_range(-1.2, 1.2)) * strength
+	_weapon_recoil_roll += deg_to_rad(randf_range(-1.4, 1.4)) * strength
+	_weapon_recoil_fov = maxf(_weapon_recoil_fov, 2.4 * strength)
+	_weapon_shake_time = maxf(_weapon_shake_time, 0.12 + 0.08 * strength)
+	_weapon_shake_strength = maxf(_weapon_shake_strength, 0.035 * strength)
+	_shot_flash_alpha = maxf(_shot_flash_alpha, 0.2 * strength)
+
+
+func _update_shot_flash(delta: float) -> void:
+	_shot_flash_alpha = maxf(_shot_flash_alpha - delta * 3.8, 0.0)
+	shot_flash.color = Color(
+		1.0,
+		1.0 if _black_white_mode else 0.78,
+		1.0 if _black_white_mode else 0.42,
+		_shot_flash_alpha
+	)
 
 
 func _update_timers(delta: float) -> void:
@@ -344,12 +379,29 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 		bob_offset.x = cos(_bob_time * PI) * bob_amount * 0.45
 		bob_offset.y = sin(_bob_time * TAU) * bob_amount
 
+	_weapon_shake_time = maxf(_weapon_shake_time - delta, 0.0)
+	_weapon_shake_phase += delta * 72.0
+	var shake_ratio := clampf(_weapon_shake_time / 0.2, 0.0, 1.0)
+	var shake_offset := Vector3.ZERO
+	var shake_rotation := Vector3.ZERO
+	if _weapon_shake_time > 0.0:
+		shake_offset = Vector3(
+			sin(_weapon_shake_phase * 1.7),
+			cos(_weapon_shake_phase * 2.3),
+			0.0
+		) * _weapon_shake_strength * shake_ratio
+		shake_rotation = Vector3(
+			sin(_weapon_shake_phase * 2.1),
+			cos(_weapon_shake_phase * 1.4),
+			sin(_weapon_shake_phase * 2.8)
+		) * _weapon_shake_strength * 0.55 * shake_ratio
+
 	_landing_kick = lerpf(_landing_kick, 0.0, _exp_weight(12.0, delta))
 	_turn_roll_input = lerpf(_turn_roll_input, 0.0, _exp_weight(10.0, delta))
 
 	var strafe_roll := -_move_input.x * strafe_roll_degrees * speed_ratio
 	var target_roll := deg_to_rad(strafe_roll + _turn_roll_input)
-	var target_position := _camera_start_position + bob_offset
+	var target_position := _camera_start_position + bob_offset + shake_offset
 	target_position.y += headbutt_pose.x - _landing_kick
 	target_position.z += headbutt_pose.y
 
@@ -357,17 +409,44 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 	camera.position = camera.position.lerp(target_position, smoothing)
 	camera.rotation.x = lerp_angle(
 		camera.rotation.x,
-		_look_pitch + headbutt_pose.z + _landing_kick * 0.65,
+		(
+			_look_pitch
+			+ headbutt_pose.z
+			+ _landing_kick * 0.65
+			- _weapon_recoil_pitch
+			+ shake_rotation.x
+		),
 		smoothing
 	)
-	camera.rotation.z = lerp_angle(camera.rotation.z, target_roll, smoothing)
+	camera.rotation.y = lerp_angle(
+		camera.rotation.y,
+		_weapon_recoil_yaw + shake_rotation.y,
+		smoothing
+	)
+	camera.rotation.z = lerp_angle(
+		camera.rotation.z,
+		target_roll + _weapon_recoil_roll + shake_rotation.z,
+		smoothing
+	)
 
 	var target_fov := _camera_start_fov
 	if Input.is_action_pressed("sprint") and _move_input.y < 0.0:
 		target_fov += sprint_fov_boost * speed_ratio
 	if _dash_time_left > 0.0:
 		target_fov += dash_fov_boost
+	target_fov += _weapon_recoil_fov
 	camera.fov = lerpf(camera.fov, target_fov, _exp_weight(8.0, delta))
+
+	var recoil_recovery := _exp_weight(weapon_recoil_recovery, delta)
+	_weapon_recoil_pitch = lerpf(_weapon_recoil_pitch, 0.0, recoil_recovery)
+	_weapon_recoil_yaw = lerpf(_weapon_recoil_yaw, 0.0, recoil_recovery)
+	_weapon_recoil_roll = lerpf(_weapon_recoil_roll, 0.0, recoil_recovery)
+	_weapon_recoil_fov = lerpf(_weapon_recoil_fov, 0.0, _exp_weight(14.0, delta))
+	_weapon_shake_strength = lerpf(
+		_weapon_shake_strength,
+		0.0,
+		_exp_weight(18.0, delta)
+	)
 
 
 func _smoothstep(value: float) -> float:

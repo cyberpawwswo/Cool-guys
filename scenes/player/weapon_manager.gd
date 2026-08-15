@@ -2,6 +2,7 @@ extends Node3D
 
 
 signal weapon_changed(index: int, display_name: String)
+signal ammo_changed(index: int, magazine: int, reserve: int)
 
 const PISTOL_SLIDE_DURATION := 0.12
 const PISTOL_SLIDE_DISTANCE := 0.035
@@ -23,8 +24,17 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"scene": preload("res://assets/weapons/shotgun/source/shotgunAnimated.fbx"),
 		"fire_sound": preload("res://assets/audio/weapons/boomstick_fire.mp3"),
 		"reload_sound": preload("res://assets/audio/weapons/boomstick_reload_shell.wav"),
-		"fire_volume_db": -4.0,
+		"fire_volume_db": 2.0,
 		"reload_volume_db": -3.0,
+		"shot_effect_strength": 1.0,
+		"muzzle_position": Vector3(-0.1, -0.06, -0.85),
+		"muzzle_size": 0.18,
+		"muzzle_duration": 0.09,
+		"muzzle_light_energy": 11.0,
+		"uses_ammo": true,
+		"magazine_capacity": 6,
+		"starting_reserve": 24,
+		"reload_amount": 1,
 		"attack_animations": [&"Armature|Fire"],
 		"procedural_fire": false,
 		"reload_animation": &"Armature|ReloadOne",
@@ -41,8 +51,17 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"scene": preload("res://assets/weapons/pistol/source/arms@beretta.fbx"),
 		"fire_sound": preload("res://assets/audio/weapons/beretta_fire.mp3"),
 		"reload_sound": preload("res://assets/audio/weapons/beretta_reload.mp3"),
-		"fire_volume_db": -4.0,
+		"fire_volume_db": 0.5,
 		"reload_volume_db": -3.0,
+		"shot_effect_strength": 0.42,
+		"muzzle_position": Vector3(0.14, -0.1, -0.82),
+		"muzzle_size": 0.1,
+		"muzzle_duration": 0.065,
+		"muzzle_light_energy": 6.0,
+		"uses_ammo": true,
+		"magazine_capacity": 15,
+		"starting_reserve": 60,
+		"reload_amount": 15,
 		"attack_animations": [],
 		"procedural_fire": true,
 		"reload_animation": &"CINEMA_4D_Main",
@@ -61,6 +80,15 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"reload_sound": null,
 		"fire_volume_db": 0.0,
 		"reload_volume_db": 0.0,
+		"shot_effect_strength": 0.16,
+		"muzzle_position": Vector3.ZERO,
+		"muzzle_size": 0.0,
+		"muzzle_duration": 0.0,
+		"muzzle_light_energy": 0.0,
+		"uses_ammo": false,
+		"magazine_capacity": 0,
+		"starting_reserve": 0,
+		"reload_amount": 0,
 		"attack_animations": [&"Armature|Kick1", &"Armature|Kick2"],
 		"procedural_fire": false,
 		"reload_animation": StringName(),
@@ -75,6 +103,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 ]
 
 @onready var weapon_label: Label = _get_player().get_node_or_null("Control/WeaponLabel")
+@onready var ammo_label: Label = _get_player().get_node_or_null("Control/AmmoLabel")
 
 var current_weapon_index := 0
 var _weapon_slots: Array[Node3D] = []
@@ -82,10 +111,18 @@ var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
 var _fire_audio_players: Array[AudioStreamPlayer] = []
 var _reload_audio_players: Array[AudioStreamPlayer] = []
+var _muzzle_flash_roots: Array[Node3D] = []
+var _muzzle_flash_lights: Array[OmniLight3D] = []
+var _muzzle_flash_times: Array[float] = []
 var _procedural_slides: Array[Node3D] = []
 var _procedural_slide_positions: Array[Vector3] = []
+var _ammo_in_magazine: Array[int] = []
+var _ammo_reserve: Array[int] = []
 var _slide_fire_time := -1.0
 var _pistol_reload_active := false
+var _reload_active := false
+var _reload_weapon_index := -1
+var _pending_reload_amount := 0
 var _attack_cooldown_left := 0.0
 var _attack_variant := 0
 var _mouse_motion := Vector2.ZERO
@@ -98,6 +135,8 @@ var _recoil_rotation := Vector3.ZERO
 
 func _ready() -> void:
 	for index in WEAPON_DATA.size():
+		_ammo_in_magazine.append(int(WEAPON_DATA[index]["magazine_capacity"]))
+		_ammo_reserve.append(int(WEAPON_DATA[index]["starting_reserve"]))
 		_create_weapon(index)
 	select_weapon(0, true)
 
@@ -105,11 +144,16 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
 	_update_procedural_slide(delta)
+	_update_muzzle_flashes(delta)
 	_update_viewmodel_motion(delta)
 
 	var animation_player := _animation_players[current_weapon_index]
-	if _pistol_reload_active and current_weapon_index == 1 and not animation_player.is_playing():
-		_reset_procedural_animation(current_weapon_index)
+	if (
+		_reload_active
+		and _reload_weapon_index == current_weapon_index
+		and not animation_player.is_playing()
+	):
+		_finish_reload()
 	if animation_player and not animation_player.is_playing():
 		if WEAPON_DATA[current_weapon_index]["hide_when_idle"]:
 			_weapon_models[current_weapon_index].visible = false
@@ -148,6 +192,8 @@ func select_weapon(index: int, instant := false) -> void:
 	var wrapped_index := wrapi(index, 0, _weapon_slots.size())
 	if wrapped_index == current_weapon_index and not instant:
 		return
+	if wrapped_index != current_weapon_index:
+		_cancel_reload()
 
 	for slot_index in _weapon_slots.size():
 		_weapon_slots[slot_index].visible = slot_index == wrapped_index
@@ -166,6 +212,7 @@ func select_weapon(index: int, instant := false) -> void:
 	_recoil_rotation = Vector3.ZERO
 	_weapon_models[current_weapon_index].visible = not WEAPON_DATA[current_weapon_index]["hide_when_idle"]
 	_update_weapon_label()
+	_update_ammo_label()
 
 	var equip_animation: StringName = WEAPON_DATA[current_weapon_index]["equip_animation"]
 	if not _play_animation(equip_animation):
@@ -178,15 +225,19 @@ func select_weapon(index: int, instant := false) -> void:
 
 
 func play_attack() -> bool:
-	if _attack_cooldown_left > 0.0:
+	if _attack_cooldown_left > 0.0 or _reload_active:
 		return false
 
 	var data := WEAPON_DATA[current_weapon_index]
+	if data["uses_ammo"] and _ammo_in_magazine[current_weapon_index] <= 0:
+		return false
 	if data["procedural_fire"]:
 		_attack_variant += 1
 		_weapon_models[current_weapon_index].visible = true
 		_play_procedural_fire()
 		_play_audio(_fire_audio_players[current_weapon_index])
+		_trigger_muzzle_flash(current_weapon_index)
+		_consume_round()
 		_apply_recoil()
 		_attack_cooldown_left = data["cooldown"]
 		return true
@@ -201,16 +252,27 @@ func play_attack() -> bool:
 	if not _play_animation(animation_name, 0.04):
 		return false
 	_play_audio(_fire_audio_players[current_weapon_index])
+	_trigger_muzzle_flash(current_weapon_index)
+	_consume_round()
 	_apply_recoil()
 	_attack_cooldown_left = data["cooldown"]
 	return true
 
 
 func reload_current_weapon() -> void:
-	if _attack_cooldown_left > 0.0:
+	if _attack_cooldown_left > 0.0 or _reload_active:
 		return
 
 	var data := WEAPON_DATA[current_weapon_index]
+	if not data["uses_ammo"]:
+		return
+	var missing_ammo := int(data["magazine_capacity"]) - _ammo_in_magazine[current_weapon_index]
+	if missing_ammo <= 0 or _ammo_reserve[current_weapon_index] <= 0:
+		return
+	var reload_amount := mini(
+		missing_ammo,
+		mini(_ammo_reserve[current_weapon_index], int(data["reload_amount"]))
+	)
 	var reload_animation: StringName = data["reload_animation"]
 	if data["procedural_fire"]:
 		var pistol_player := _animation_players[current_weapon_index]
@@ -225,12 +287,14 @@ func reload_current_weapon() -> void:
 		)
 		_play_audio(_reload_audio_players[current_weapon_index])
 		_pistol_reload_active = true
+		_begin_reload(reload_amount)
 		_attack_cooldown_left = PISTOL_RELOAD_END - PISTOL_RELOAD_START
 		return
 
 	if not _play_animation(reload_animation, 0.1):
 		return
 	_play_audio(_reload_audio_players[current_weapon_index])
+	_begin_reload(reload_amount)
 
 	var player := _animation_players[current_weapon_index]
 	var animation := player.get_animation(reload_animation)
@@ -243,6 +307,71 @@ func get_weapon_count() -> int:
 
 func get_current_weapon_name() -> String:
 	return WEAPON_DATA[current_weapon_index]["display_name"]
+
+
+func get_current_ammo() -> int:
+	return _ammo_in_magazine[current_weapon_index]
+
+
+func get_current_reserve_ammo() -> int:
+	return _ammo_reserve[current_weapon_index]
+
+
+func is_reloading() -> bool:
+	return _reload_active
+
+
+func _consume_round() -> void:
+	if not WEAPON_DATA[current_weapon_index]["uses_ammo"]:
+		return
+	_ammo_in_magazine[current_weapon_index] = maxi(
+		_ammo_in_magazine[current_weapon_index] - 1,
+		0
+	)
+	_update_ammo_label()
+	_emit_ammo_changed(current_weapon_index)
+
+
+func _begin_reload(amount: int) -> void:
+	_reload_active = true
+	_reload_weapon_index = current_weapon_index
+	_pending_reload_amount = amount
+
+
+func _finish_reload() -> void:
+	var weapon_index := _reload_weapon_index
+	var reload_amount := _pending_reload_amount
+	_reload_active = false
+	_reload_weapon_index = -1
+	_pending_reload_amount = 0
+	if weapon_index < 0 or reload_amount <= 0:
+		return
+
+	_ammo_in_magazine[weapon_index] += reload_amount
+	_ammo_reserve[weapon_index] -= reload_amount
+	if weapon_index == 1 and _pistol_reload_active:
+		_reset_procedural_animation(weapon_index)
+	_update_ammo_label()
+	_emit_ammo_changed(weapon_index)
+
+
+func _cancel_reload() -> void:
+	if not _reload_active:
+		return
+	var weapon_index := _reload_weapon_index
+	_reload_active = false
+	_reload_weapon_index = -1
+	_pending_reload_amount = 0
+	if weapon_index >= 0:
+		_reload_audio_players[weapon_index].stop()
+
+
+func _emit_ammo_changed(weapon_index: int) -> void:
+	ammo_changed.emit(
+		weapon_index,
+		_ammo_in_magazine[weapon_index],
+		_ammo_reserve[weapon_index]
+	)
 
 
 func _create_weapon(index: int) -> void:
@@ -288,6 +417,7 @@ func _create_weapon(index: int) -> void:
 		data["reload_volume_db"],
 		1
 	))
+	_create_muzzle_flash(index, data)
 	_configure_idle_loop(index, animation_player)
 	slot.visible = false
 
@@ -321,6 +451,96 @@ func _play_audio(player: AudioStreamPlayer) -> void:
 	if player == null or player.stream == null:
 		return
 	player.play()
+
+
+func _create_muzzle_flash(index: int, data: Dictionary) -> void:
+	var flash_size := float(data["muzzle_size"])
+	if flash_size <= 0.0:
+		_muzzle_flash_roots.append(null)
+		_muzzle_flash_lights.append(null)
+		_muzzle_flash_times.append(0.0)
+		return
+
+	var flash_root := Node3D.new()
+	flash_root.name = "MuzzleFlash_%d" % (index + 1)
+	flash_root.position = data["muzzle_position"]
+	flash_root.visible = false
+	add_child(flash_root)
+
+	var flash_shader := Shader.new()
+	flash_shader.code = """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, fog_disabled;
+
+void fragment() {
+	vec2 centered = UV - vec2(0.5);
+	float radius = length(centered);
+	float glow = 1.0 - smoothstep(0.08, 0.5, radius);
+	float horizontal = (1.0 - smoothstep(0.015, 0.09, abs(centered.y)))
+		* (1.0 - smoothstep(0.08, 0.5, abs(centered.x)));
+	float vertical = (1.0 - smoothstep(0.015, 0.09, abs(centered.x)))
+		* (1.0 - smoothstep(0.08, 0.5, abs(centered.y)));
+	float alpha = clamp(glow * 0.82 + max(horizontal, vertical) * 0.75, 0.0, 1.0);
+	vec3 hot = vec3(1.0, 1.0, 0.72);
+	vec3 orange = vec3(1.0, 0.22, 0.015);
+	vec3 color = mix(hot, orange, smoothstep(0.04, 0.38, radius));
+	ALBEDO = color;
+	EMISSION = color * 8.0;
+	ALPHA = alpha;
+}
+"""
+	var flash_material := ShaderMaterial.new()
+	flash_material.shader = flash_shader
+	var flash_quad := QuadMesh.new()
+	flash_quad.size = Vector2.ONE * flash_size
+	flash_quad.material = flash_material
+	var flash_mesh := MeshInstance3D.new()
+	flash_mesh.mesh = flash_quad
+	flash_mesh.layers = 2
+	flash_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flash_root.add_child(flash_mesh)
+
+	var flash_light := OmniLight3D.new()
+	flash_light.light_color = Color(1.0, 0.42, 0.1)
+	flash_light.light_energy = 0.0
+	flash_light.light_cull_mask = 2
+	flash_light.omni_range = 3.2
+	flash_light.shadow_enabled = false
+	flash_root.add_child(flash_light)
+
+	_muzzle_flash_roots.append(flash_root)
+	_muzzle_flash_lights.append(flash_light)
+	_muzzle_flash_times.append(0.0)
+
+
+func _trigger_muzzle_flash(index: int) -> void:
+	var flash_root := _muzzle_flash_roots[index]
+	if flash_root == null:
+		return
+	_muzzle_flash_times[index] = float(WEAPON_DATA[index]["muzzle_duration"])
+	flash_root.scale = Vector3.ONE * 0.7
+	flash_root.rotation.z = randf_range(-0.35, 0.35)
+	flash_root.visible = true
+	_muzzle_flash_lights[index].light_energy = float(
+		WEAPON_DATA[index]["muzzle_light_energy"]
+	)
+
+
+func _update_muzzle_flashes(delta: float) -> void:
+	for index in _muzzle_flash_roots.size():
+		var flash_root := _muzzle_flash_roots[index]
+		if flash_root == null or _muzzle_flash_times[index] <= 0.0:
+			continue
+		_muzzle_flash_times[index] = maxf(_muzzle_flash_times[index] - delta, 0.0)
+		var duration := float(WEAPON_DATA[index]["muzzle_duration"])
+		var remaining := _muzzle_flash_times[index] / duration
+		flash_root.scale = Vector3.ONE * lerpf(1.35, 0.7, remaining)
+		_muzzle_flash_lights[index].light_energy = (
+			float(WEAPON_DATA[index]["muzzle_light_energy"]) * remaining
+		)
+		if _muzzle_flash_times[index] <= 0.0:
+			flash_root.visible = false
+			_muzzle_flash_lights[index].light_energy = 0.0
 
 
 func _update_viewmodel_motion(delta: float) -> void:
@@ -444,16 +664,22 @@ func _update_procedural_slide(delta: float) -> void:
 func _apply_recoil() -> void:
 	var recoil_scale := 0.75
 	if current_weapon_index == 0:
-		recoil_scale = 1.35
+		recoil_scale = 2.4
 	elif current_weapon_index == 1:
-		recoil_scale = 0.55
+		recoil_scale = 1.0
 	var side := -1.0 if _attack_variant % 2 == 0 else 1.0
 	_recoil_position += Vector3(side * 0.002, -0.003, 0.025) * recoil_scale
 	_recoil_rotation += Vector3(
-		deg_to_rad(1.15),
-		deg_to_rad(side * 0.2),
-		deg_to_rad(side * 0.25)
+		deg_to_rad(1.65),
+		deg_to_rad(side * 0.35),
+		deg_to_rad(side * 0.45)
 	) * recoil_scale
+	var player := _get_player()
+	if player and player.has_method("apply_weapon_recoil"):
+		player.call(
+			"apply_weapon_recoil",
+			float(WEAPON_DATA[current_weapon_index]["shot_effect_strength"])
+		)
 
 
 func _find_animation_player(model: Node) -> AnimationPlayer:
@@ -496,6 +722,18 @@ func _update_weapon_label() -> void:
 		current_weapon_index + 1,
 		WEAPON_DATA[current_weapon_index]["display_name"],
 	]
+
+
+func _update_ammo_label() -> void:
+	if ammo_label == null:
+		return
+	var uses_ammo: bool = WEAPON_DATA[current_weapon_index]["uses_ammo"]
+	ammo_label.visible = uses_ammo
+	if uses_ammo:
+		ammo_label.text = "%d / %d" % [
+			_ammo_in_magazine[current_weapon_index],
+			_ammo_reserve[current_weapon_index],
+		]
 
 
 func _number_key_to_index(keycode: Key) -> int:
