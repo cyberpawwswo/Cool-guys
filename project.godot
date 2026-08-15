@@ -28,6 +28,10 @@ project/assembly_name="Cool-guys"
 
 enabled=PackedStringArray("res://addons/voronoishatter/plugin.cfg")
 
+[global_group]
+
+destruction=""
+
 [input]
 
 move_forward={

@@ -1,9 +1,20 @@
 [gd_scene format=3 uid="uid://dwjr6ohf76wfi"]
 
 [ext_resource type="Texture2D" uid="uid://da2lt8kxwi356" path="res://addons/godot-prototype-texture/PNG/checker_512x512/checker_black_512x512.png" id="1_62kbb"]
+[ext_resource type="Script" uid="uid://p4b1antg1jow" path="res://scenes/destruction/destruction.gd" id="1_hocnj"]
 [ext_resource type="PackedScene" uid="uid://csrwnvgh81t7w" path="res://scenes/player/player.tscn" id="1_i0vk3"]
-[ext_resource type="Script" uid="uid://p4b1antg1jow" path="res://scenes/destruction/destruction.gd" id="4_qv4mi"]
+[ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_lbjl6"]
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
+[ext_resource type="PackedScene" uid="uid://dxi3ygkej1cio" path="res://assets/weapons/aks74/source/hands_aks74_stalker_soc.fbx" id="5_qv4mi"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2vomh"]
+albedo_color = Color(0.16315243, 0.16315243, 0.1631524, 1)
+
+[sub_resource type="Resource" id="Resource_6eemo"]
+script = ExtResource("2_lbjl6")
+random_color = false
+use_mesh_materials = true
+inner_material = SubResource("StandardMaterial3D_2vomh")
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_kc65l"]
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
@@ -33,12 +44,20 @@ data = PackedVector3Array(-22.910599, 0.5, 30.3417, 22.910599, 0.5, 30.3417, -22
 transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
 shadow_enabled = true
 
+[node name="DestroyedController" type="Node" parent="." unique_id=1410493613 node_paths=PackedStringArray("meshe")]
+script = ExtResource("1_hocnj")
+meshe = NodePath("../MeshInstance3D")
+seed_saved = 512412333
+setting = SubResource("Resource_6eemo")
+metadata/_custom_type_script = "uid://p4b1antg1jow"
+
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2027440389]
 environment = SubResource("Environment_uxvkn")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1228272130]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1228272130 groups=["destruction"]]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4566803, 0, -11.483986)
 mesh = SubResource("BoxMesh_0x52n")
+surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 
 [node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D" unique_id=1943685246]
 
@@ -51,6 +70,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.7821255, 0)
 [node name="RigidBody3D" parent="." unique_id=1909331113 instance=ExtResource("4_uxvkn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0630054, 4.6511745)
 
-[node name="Destruction" type="Node" parent="." unique_id=1984014483]
-script = ExtResource("4_qv4mi")
-metadata/_custom_type_script = "uid://p4b1antg1jow"
+[node name="hands_aks74_stalker_soc" parent="." unique_id=1414044982 instance=ExtResource("5_qv4mi")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.16962, 0.8502996, -5.8924546)

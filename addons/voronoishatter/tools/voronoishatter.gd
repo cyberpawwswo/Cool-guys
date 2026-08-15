@@ -90,6 +90,7 @@ func get_target_mesh() -> MeshInstance3D:
 
 func execute():
 	started = Time.get_ticks_usec()
+
 	await get_tree().process_frame
 
 	if delete_existing_fractures:

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DestroySettings" format=3 uid="uid://chaxeuv45uosq"]
+
+[ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="1_rumvr"]
+
+[resource]
+script = ExtResource("1_rumvr")
+metadata/_custom_type_script = "uid://bix1xspyl8o1e"

@@ -1,0 +1,64 @@
+[gd_scene format=3 uid="uid://di2dd6pakkiim"]
+
+[ext_resource type="Script" uid="uid://p4b1antg1jow" path="res://scenes/destruction/destruction.gd" id="1_vy3o1"]
+[ext_resource type="Script" uid="uid://da087cg46iawj" path="res://addons/voronoishatter/tools/voronoishatter.gd" id="2_g85pt"]
+[ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_h5f2x"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1lyfv"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_vy3o1"]
+sky_material = SubResource("ProceduralSkyMaterial_1lyfv")
+
+[sub_resource type="Environment" id="Environment_g85pt"]
+background_mode = 2
+sky = SubResource("Sky_vy3o1")
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_0x52n"]
+size = Vector2(10, 10)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_vy3o1"]
+data = PackedVector3Array(5, 0, 5, -5, 0, 5, 5, 0, -5, -5, 0, 5, -5, 0, -5, 5, 0, -5)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_0x52n"]
+
+[sub_resource type="Resource" id="Resource_oxi1u"]
+script = ExtResource("2_h5f2x")
+
+[node name="TestDestroyedController" type="Node3D" unique_id=1272061107]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1433031061]
+environment = SubResource("Environment_g85pt")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1489750379]
+transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
+shadow_enabled = true
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=382928590]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5402495, 0)
+mesh = SubResource("PlaneMesh_0x52n")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D" unique_id=853635659]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D" unique_id=1043499683]
+shape = SubResource("ConcavePolygonShape3D_vy3o1")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=1452125556]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1600046, 0)
+mesh = SubResource("CapsuleMesh_0x52n")
+
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1323477198]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.87581396, 2.1710422)
+
+[node name="DestroyedController" type="Node" parent="." unique_id=975209763 node_paths=PackedStringArray("meshe")]
+script = ExtResource("1_vy3o1")
+meshe = NodePath("../MeshInstance3D2")
+seed_saved = 135125
+setting = SubResource("Resource_oxi1u")
+life_time = 10.0
+metadata/_custom_type_script = "uid://p4b1antg1jow"
+
+[node name="VoronoiShatter" type="Node3D" parent="." unique_id=2034425137]
+script = ExtResource("2_g85pt")
+metadata/_custom_type_script = "uid://da087cg46iawj"
