@@ -38,6 +38,7 @@ extends CharacterBody3D
 @export var headbutt_drop := 0.08
 @export var headbutt_reach := 0.32
 @export var headbutt_windup_back := 0.22
+@export var headbutt_upward_velocity := 8.0
 @export var headbutt_windup_tilt_degrees := 42.0
 @export var headbutt_tilt_degrees := 18.0
 
@@ -300,7 +301,7 @@ func _update_headbutt(delta: float) -> Vector3:
 	_headbutt_time += delta
 	var progress := clampf(_headbutt_time / headbutt_duration, 0.0, 1.0)
 
-	if not _headbutt_has_hit and progress >= 0.42:
+	if not _headbutt_has_hit and progress >= 0.52:
 		_perform_attack(true)
 		_headbutt_has_hit = true
 
@@ -357,7 +358,10 @@ func _perform_attack(close_only := false) -> void:
 
 	var rigid_body := body as RigidBody3D
 	if rigid_body:
-		rigid_body.apply_central_impulse(hit_direction * attack_power)
+		var impulse_vector := hit_direction * attack_power
+		if close_only:
+			impulse_vector.y += rigid_body.mass * headbutt_upward_velocity
+		rigid_body.apply_central_impulse(impulse_vector)
 
 	if "hp" in body:
 		body.hp = 0
