@@ -95,8 +95,7 @@ func _process(delta: float) -> void:
 
 	var animation_player := _animation_players[current_weapon_index]
 	if _pistol_reload_active and current_weapon_index == 1 and not animation_player.is_playing():
-		_pistol_reload_active = false
-		animation_player.active = false
+		_reset_procedural_animation(current_weapon_index)
 	if animation_player and not animation_player.is_playing():
 		if WEAPON_DATA[current_weapon_index]["hide_when_idle"]:
 			_weapon_models[current_weapon_index].visible = false
