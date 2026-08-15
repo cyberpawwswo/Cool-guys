@@ -27,6 +27,10 @@ func _run_test() -> void:
 	if manager._fire_audio_players.size() != 3 or manager._reload_audio_players.size() != 3:
 		_fail("Expected audio players for all 3 weapon slots")
 		return
+	for index in 2:
+		if manager._fire_audio_players[index].max_polyphony < 4:
+			_fail("Weapon %d fire sound cannot overlap" % index)
+			return
 
 	var expected_names := ["Boomstick", "Beretta", "Leg Kick"]
 	for index in manager.get_weapon_count():

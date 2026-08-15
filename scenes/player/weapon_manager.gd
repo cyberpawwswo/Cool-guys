@@ -279,12 +279,14 @@ func _create_weapon(index: int) -> void:
 	_fire_audio_players.append(_create_audio_player(
 		"FireAudio_%d" % (index + 1),
 		data["fire_sound"],
-		data["fire_volume_db"]
+		data["fire_volume_db"],
+		4
 	))
 	_reload_audio_players.append(_create_audio_player(
 		"ReloadAudio_%d" % (index + 1),
 		data["reload_sound"],
-		data["reload_volume_db"]
+		data["reload_volume_db"],
+		1
 	))
 	_configure_idle_loop(index, animation_player)
 	slot.visible = false
@@ -303,12 +305,14 @@ func _prepare_imported_scene(model: Node) -> void:
 func _create_audio_player(
 	player_name: String,
 	stream: AudioStream,
-	volume_db: float
+	volume_db: float,
+	max_polyphony: int
 ) -> AudioStreamPlayer:
 	var player := AudioStreamPlayer.new()
 	player.name = player_name
 	player.stream = stream
 	player.volume_db = volume_db
+	player.max_polyphony = max_polyphony
 	add_child(player)
 	return player
 
