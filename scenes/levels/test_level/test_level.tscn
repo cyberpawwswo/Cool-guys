@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_lbjl6"]
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
 [ext_resource type="Script" uid="uid://klr045vqhbbu" path="res://scenes/levels/test_level/dark_mode.gd" id="6_darkmode"]
+[ext_resource type="PackedScene" path="res://scenes/levels/office/office_map.tscn" id="7_office"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i0vk3"]
 resource_local_to_scene = true
@@ -78,68 +79,13 @@ environment = SubResource("Environment_uxvkn")
 transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
 shadow_enabled = true
 
-[node name="DestroyedController" type="Node" parent="." unique_id=1410493613 node_paths=PackedStringArray("meshe")]
-script = ExtResource("1_hocnj")
-meshe = NodePath("../MeshInstance3D")
-seed_saved = 512412333
-setting = SubResource("Resource_6eemo")
-metadata/_custom_type_script = "uid://p4b1antg1jow"
-
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2027440389]
 environment = SubResource("Environment_uxvkn")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1228272130 groups=["destruction"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.467743, 0, -11.483986)
-mesh = SubResource("BoxMesh_0x52n")
-surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D" unique_id=218596032]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D" unique_id=1019065275]
-shape = SubResource("ConcavePolygonShape3D_qtd55")
-
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=1250180117 groups=["destruction"]]
-transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, 73.7543, -50.879803, -11.483986)
-mesh = SubResource("BoxMesh_0x52n")
-surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D2" unique_id=273935884]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D2/StaticBody3D" unique_id=866293181]
-shape = SubResource("ConcavePolygonShape3D_hocnj")
-
-[node name="MeshInstance3D3" type="MeshInstance3D" parent="." unique_id=987858722 groups=["destruction"]]
-transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, -77.05681, -47.03106, -11.483986)
-mesh = SubResource("BoxMesh_0x52n")
-surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D3" unique_id=632074127]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D3/StaticBody3D" unique_id=1394950021]
-shape = SubResource("ConcavePolygonShape3D_lbjl6")
-
-[node name="MeshInstance3D4" type="MeshInstance3D" parent="." unique_id=413179552 groups=["destruction"]]
-transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -1.9358788, -50.69182, 63.935417)
-mesh = SubResource("BoxMesh_0x52n")
-surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D4" unique_id=1147458444]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D4/StaticBody3D" unique_id=204873678]
-shape = SubResource("ConcavePolygonShape3D_6eemo")
-
-[node name="MeshInstance3D5" type="MeshInstance3D" parent="." unique_id=1320545545 groups=["destruction"]]
-transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -0.026550293, -52.282562, -88.31052)
-mesh = SubResource("BoxMesh_0x52n")
-surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
-
-[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D5" unique_id=269067625]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D5/StaticBody3D" unique_id=1355618304]
-shape = SubResource("ConcavePolygonShape3D_2wufs")
+[node name="OfficeMap" parent="." instance=ExtResource("7_office")]
 
 [node name="Player" parent="." unique_id=1040782523 instance=ExtResource("1_i0vk3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.7821255, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
 
 [node name="RigidBody3D" parent="." unique_id=1909331113 instance=ExtResource("4_uxvkn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0630054, 4.6511745)
