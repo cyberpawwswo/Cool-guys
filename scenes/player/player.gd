@@ -39,6 +39,10 @@ extends CharacterBody3D
 @export var headbutt_reach := 0.32
 @export var headbutt_windup_back := 0.22
 @export var headbutt_upward_velocity := 8.0
+@export var hold_distance := 1.6
+@export var hold_lift := 0.7
+@export var carry_speed := 10.0
+@export var carry_rot_speed := 6.0
 @export var headbutt_windup_tilt_degrees := 42.0
 @export var headbutt_tilt_degrees := 18.0
 
@@ -82,6 +86,8 @@ var _jump_buffer_left := 0.0
 var _headbutt_time := -1.0
 var _headbutt_cooldown_left := 0.0
 var _headbutt_has_hit := false
+var _held_body: RigidBody3D = null
+var _throw_direction := Vector3.FORWARD
 var _suppress_attack_this_frame := false
 
 var _black_white_mode := false
@@ -167,6 +173,7 @@ func _open_pause_menu() -> void:
 func _physics_process(delta: float) -> void:
 	_update_timers(delta)
 	_update_floor_assistance(delta)
+	_update_carry()
 
 	_move_input = Input.get_vector(
 		"move_left", "move_right", "move_forward", "move_backward"
@@ -198,7 +205,10 @@ func _process(delta: float) -> void:
 		if weapon_manager.play_attack():
 			_perform_attack()
 	if Input.is_action_just_pressed("strong_attack"):
-		_start_headbutt()
+		if _headbutt_time < 0.0 and not _try_grab():
+			_start_headbutt()
+	if Input.is_action_just_released("strong_attack"):
+		_release_throw()
 	if Input.is_action_just_pressed("black_white"):
 		_toggle_black_white_mode()
 	_update_blink(delta)
@@ -294,6 +304,49 @@ func _start_headbutt() -> void:
 	_headbutt_has_hit = false
 
 
+func _try_grab() -> bool:
+	if not ray.is_colliding():
+		return false
+	var body := ray.get_collider()
+	if body == null:
+		return false
+	var hit_point := ray.get_collision_point()
+	if global_position.distance_to(hit_point) > close_distance:
+		return false
+	var rigid_body := body as RigidBody3D
+	if rigid_body == null:
+		return false
+	_held_body = rigid_body
+	_headbutt_has_hit = false
+	return true
+
+
+func _release_throw() -> void:
+	if _held_body == null or _headbutt_time >= 0.0:
+		return
+	_throw_direction = -camera.global_transform.basis.z
+	_headbutt_time = 0.0
+	_headbutt_cooldown_left = headbutt_cooldown
+	_headbutt_has_hit = false
+
+
+func _update_carry() -> void:
+	if _held_body == null or not is_instance_valid(_held_body):
+		_held_body = null
+		return
+	if _headbutt_has_hit:
+		_held_body = null
+		return
+	var target := camera.global_position + -camera.global_transform.basis.z * hold_distance
+	target.y += hold_lift
+	var carry_velocity := (target - _held_body.global_position) * carry_speed
+	if carry_velocity.length() > 20.0:
+		carry_velocity = carry_velocity.normalized() * 20.0
+	_held_body.linear_velocity = carry_velocity
+	var yaw_diff := wrapf(_held_body.global_rotation.y - camera.global_rotation.y, -PI, PI)
+	_held_body.angular_velocity = Vector3(0.0, -yaw_diff * carry_rot_speed, 0.0)
+
+
 func _update_headbutt(delta: float) -> Vector3:
 	if _headbutt_time < 0.0:
 		return Vector3.ZERO
@@ -331,11 +384,23 @@ func _update_headbutt(delta: float) -> Vector3:
 
 	if progress >= 1.0:
 		_headbutt_time = -1.0
+		_headbutt_has_hit = false
 
 	return Vector3(height_offset, forward_offset, pitch_offset)
 
 
 func _perform_attack(close_only := false) -> void:
+	if _held_body != null:
+		var thrown := _held_body
+		_held_body = null
+		var throw_impulse := _throw_direction * impulse * close_multiplier
+		var horizontal_amount := 1.0 - absf(_throw_direction.y)
+		throw_impulse.y += thrown.mass * headbutt_upward_velocity * horizontal_amount
+		thrown.apply_central_impulse(throw_impulse)
+		if "hp" in thrown:
+			thrown.hp = 0
+		return
+
 	if not ray.is_colliding():
 		return
 
