@@ -5,22 +5,22 @@
 [ext_resource type="PackedScene" uid="uid://csrwnvgh81t7w" path="res://scenes/player/player.tscn" id="1_i0vk3"]
 [ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_lbjl6"]
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
-[ext_resource type="Script" path="res://scenes/levels/test_level/dark_mode.gd" id="6_darkmode"]
+[ext_resource type="Script" uid="uid://klr045vqhbbu" path="res://scenes/levels/test_level/dark_mode.gd" id="6_darkmode"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i0vk3"]
+albedo_texture = ExtResource("1_62kbb")
+roughness = 0.4
+uv1_triplanar = true
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2vomh"]
 albedo_color = Color(0.16315243, 0.16315243, 0.1631524, 1)
 roughness = 0.5
-specular = 1.0
-
-[sub_resource type="Resource" id="Resource_6eemo"]
-script = ExtResource("2_lbjl6")
-random_color = false
-use_mesh_materials = true
-inner_material = SubResource("StandardMaterial3D_2vomh")
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_kc65l"]
+sky_top_color = Color(0.4, 0.45, 0.55, 1)
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
 ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_bottom_color = Color(0.2, 0.17, 0.13, 1)
 
 [sub_resource type="Sky" id="Sky_62kbb"]
 sky_material = SubResource("ProceduralSkyMaterial_kc65l")
@@ -28,13 +28,14 @@ sky_material = SubResource("ProceduralSkyMaterial_kc65l")
 [sub_resource type="Environment" id="Environment_uxvkn"]
 background_mode = 2
 sky = SubResource("Sky_62kbb")
+ambient_light_source = 2
+ambient_light_energy = 1.0
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i0vk3"]
-albedo_texture = ExtResource("1_62kbb")
-albedo_color = Color(1, 1, 1, 1)
-uv1_triplanar = true
-roughness = 0.4
-specular = 1.0
+[sub_resource type="Resource" id="Resource_6eemo"]
+script = ExtResource("2_lbjl6")
+random_color = false
+use_mesh_materials = true
+inner_material = SubResource("StandardMaterial3D_2vomh")
 
 [sub_resource type="BoxMesh" id="BoxMesh_0x52n"]
 material = SubResource("StandardMaterial3D_i0vk3")
@@ -45,7 +46,7 @@ data = PackedVector3Array(-22.910599, 0.5, 30.3417, 22.910599, 0.5, 30.3417, -22
 
 [node name="TestLevel" type="Node3D" unique_id=2058491382]
 
-[node name="DarkMode" type="Node" parent="." node_paths=PackedStringArray("sun")]
+[node name="DarkMode" type="Node" parent="." unique_id=151294056 node_paths=PackedStringArray("sun")]
 script = ExtResource("6_darkmode")
 floor_material = SubResource("StandardMaterial3D_i0vk3")
 inner_material = SubResource("StandardMaterial3D_2vomh")
@@ -74,6 +75,46 @@ surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 [node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D" unique_id=1943685246]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D/StaticBody3D" unique_id=649244879]
+shape = SubResource("ConcavePolygonShape3D_qv4mi")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=1250180117 groups=["destruction"]]
+transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, 19.469646, 0, -11.483986)
+mesh = SubResource("BoxMesh_0x52n")
+surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D2" unique_id=1071888070]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D2/StaticBody3D" unique_id=1297006412]
+shape = SubResource("ConcavePolygonShape3D_qv4mi")
+
+[node name="MeshInstance3D3" type="MeshInstance3D" parent="." unique_id=987858722 groups=["destruction"]]
+transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, -25.195736, 0, -11.483986)
+mesh = SubResource("BoxMesh_0x52n")
+surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D3" unique_id=1245347955]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D3/StaticBody3D" unique_id=165796797]
+shape = SubResource("ConcavePolygonShape3D_qv4mi")
+
+[node name="MeshInstance3D4" type="MeshInstance3D" parent="." unique_id=413179552 groups=["destruction"]]
+transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -8.589035, 0, 16.471897)
+mesh = SubResource("BoxMesh_0x52n")
+surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D4" unique_id=107854950]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D4/StaticBody3D" unique_id=922960763]
+shape = SubResource("ConcavePolygonShape3D_qv4mi")
+
+[node name="MeshInstance3D5" type="MeshInstance3D" parent="." unique_id=1320545545 groups=["destruction"]]
+transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -8.589035, 0, -40.23381)
+mesh = SubResource("BoxMesh_0x52n")
+surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="MeshInstance3D5" unique_id=42735395]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D5/StaticBody3D" unique_id=105169524]
 shape = SubResource("ConcavePolygonShape3D_qv4mi")
 
 [node name="Player" parent="." unique_id=1040782523 instance=ExtResource("1_i0vk3")]

@@ -16,11 +16,16 @@ ambient_light_energy = 1.35
 [sub_resource type="Shader" id="Shader_grayscale"]
 code = "shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
+uniform float vignette_strength : hint_range(0.0, 1.0) = 0.7;
+uniform float vignette_start : hint_range(0.0, 1.0) = 0.3;
+uniform float vignette_end : hint_range(0.0, 1.5) = 0.85;
 
 void fragment() {
 	vec3 col = texture(screen_tex, SCREEN_UV).rgb;
 	float gray = dot(col, vec3(0.299, 0.587, 0.114));
-	COLOR = vec4(vec3(gray), 1.0);
+	float dist = distance(SCREEN_UV, vec2(0.5));
+	float vignette = 1.0 - smoothstep(vignette_start, vignette_end, dist) * vignette_strength;
+	COLOR = vec4(vec3(gray) * vignette, 1.0);
 }"
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_grayscale"]
