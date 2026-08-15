@@ -70,6 +70,19 @@ func _run_test() -> void:
 		if manager.get_current_reserve_ammo() != starting_reserves[index]:
 			_fail("Weapon %d consumed reserve ammo while firing" % index)
 			return
+		var ammo_after_first_shot: int = manager.get_current_ammo()
+		if manager.play_attack():
+			_fail("Weapon %d ignored its fire-rate limit" % index)
+			return
+		if manager.get_current_ammo() != ammo_after_first_shot:
+			_fail("Weapon %d consumed ammo during fire-rate cooldown" % index)
+			return
+		if not is_equal_approx(
+			manager._attack_cooldown_left,
+			float(manager.WEAPON_DATA[index]["cooldown"])
+		):
+			_fail("Weapon %d did not apply its configured cooldown" % index)
+			return
 		if index < 2 and not manager._fire_audio_players[index].playing:
 			_fail("Weapon %d fire sound did not play" % index)
 			return
