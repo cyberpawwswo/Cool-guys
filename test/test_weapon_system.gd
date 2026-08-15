@@ -34,7 +34,26 @@ func _run_test() -> void:
 		if not manager.play_attack():
 			_fail("Weapon %d has no playable attack animation" % index)
 			return
+		if index == 1 and manager._animation_players[index].is_playing():
+			_fail("Beretta started the full reload animation after firing")
+			return
 
+	manager.select_weapon(1, true)
+	var pistol_slide: Node3D = manager._procedural_slides[1]
+	var slide_rest_position: Vector3 = manager._procedural_slide_positions[1]
+	if not manager.play_attack():
+		_fail("Beretta procedural fire failed")
+		return
+	manager._process(0.03)
+	if pistol_slide.position.is_equal_approx(slide_rest_position):
+		_fail("Beretta slide did not move after firing")
+		return
+	manager._process(0.15)
+	if pistol_slide.position.distance_to(slide_rest_position) > 0.001:
+		_fail("Beretta slide did not return after firing")
+		return
+
+	manager.select_weapon(2, true)
 	var wheel_event := InputEventMouseButton.new()
 	wheel_event.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel_event.pressed = true

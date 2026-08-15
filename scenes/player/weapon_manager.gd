@@ -3,6 +3,9 @@ extends Node3D
 
 signal weapon_changed(index: int, display_name: String)
 
+const PISTOL_SLIDE_DURATION := 0.12
+const PISTOL_SLIDE_DISTANCE := 0.035
+
 @export_category("Viewmodel Motion")
 @export var motion_smoothing := 19.0
 @export var sway_position_amount := 0.00018
@@ -17,6 +20,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"display_name": "Boomstick",
 		"scene": preload("res://assets/weapons/shotgun/source/shotgunAnimated.fbx"),
 		"attack_animations": [&"Armature|Fire"],
+		"procedural_fire": false,
 		"reload_animation": &"Armature|ReloadOne",
 		"equip_animation": &"Armature|Weild",
 		"idle_animation": StringName(),
@@ -29,7 +33,8 @@ const WEAPON_DATA: Array[Dictionary] = [
 	{
 		"display_name": "Beretta",
 		"scene": preload("res://assets/weapons/pistol/source/arms@beretta.fbx"),
-		"attack_animations": [&"CINEMA_4D_Main"],
+		"attack_animations": [],
+		"procedural_fire": true,
 		"reload_animation": StringName(),
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
@@ -43,6 +48,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"display_name": "Leg Kick",
 		"scene": preload("res://assets/weapons/legkick/source/legkick.fbx"),
 		"attack_animations": [&"Armature|Kick1", &"Armature|Kick2"],
+		"procedural_fire": false,
 		"reload_animation": StringName(),
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
@@ -60,6 +66,9 @@ var current_weapon_index := 0
 var _weapon_slots: Array[Node3D] = []
 var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
+var _procedural_slides: Array[Node3D] = []
+var _procedural_slide_positions: Array[Vector3] = []
+var _slide_fire_time := -1.0
 var _attack_cooldown_left := 0.0
 var _attack_variant := 0
 var _mouse_motion := Vector2.ZERO
@@ -78,6 +87,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
+	_update_procedural_slide(delta)
 	_update_viewmodel_motion(delta)
 
 	var animation_player := _animation_players[current_weapon_index]
@@ -149,7 +159,16 @@ func play_attack() -> bool:
 	if _attack_cooldown_left > 0.0:
 		return false
 
-	var attack_animations: Array = WEAPON_DATA[current_weapon_index]["attack_animations"]
+	var data := WEAPON_DATA[current_weapon_index]
+	if data["procedural_fire"]:
+		_attack_variant += 1
+		_weapon_models[current_weapon_index].visible = true
+		_play_procedural_fire()
+		_apply_recoil()
+		_attack_cooldown_left = data["cooldown"]
+		return true
+
+	var attack_animations: Array = data["attack_animations"]
 	if attack_animations.is_empty():
 		return false
 
@@ -159,7 +178,7 @@ func play_attack() -> bool:
 	if not _play_animation(animation_name, 0.04):
 		return false
 	_apply_recoil()
-	_attack_cooldown_left = WEAPON_DATA[current_weapon_index]["cooldown"]
+	_attack_cooldown_left = data["cooldown"]
 	return true
 
 
@@ -204,7 +223,16 @@ func _create_weapon(index: int) -> void:
 
 	_weapon_slots.append(slot)
 	_weapon_models.append(model as Node3D)
+	var slide := model.find_child("slide", true, false) as Node3D
+	if data["procedural_fire"] and slide:
+		_procedural_slides.append(slide)
+		_procedural_slide_positions.append(slide.position)
+	else:
+		_procedural_slides.append(null)
+		_procedural_slide_positions.append(Vector3.ZERO)
 	var animation_player := _find_animation_player(model)
+	if data["procedural_fire"] and animation_player:
+		animation_player.active = false
 	_animation_players.append(animation_player)
 	_configure_idle_loop(index, animation_player)
 	slot.visible = false
@@ -297,6 +325,34 @@ func _update_viewmodel_motion(delta: float) -> void:
 	_equip_amount = lerpf(_equip_amount, 0.0, _exp_weight(8.0, delta))
 	_recoil_position = _recoil_position.lerp(Vector3.ZERO, _exp_weight(15.0, delta))
 	_recoil_rotation = _recoil_rotation.lerp(Vector3.ZERO, _exp_weight(18.0, delta))
+
+
+func _play_procedural_fire() -> void:
+	var slide := _procedural_slides[current_weapon_index]
+	if slide == null:
+		return
+	_slide_fire_time = 0.0
+	slide.position = _procedural_slide_positions[current_weapon_index]
+
+
+func _update_procedural_slide(delta: float) -> void:
+	if _slide_fire_time < 0.0:
+		return
+
+	var slide := _procedural_slides[1]
+	var rest_position := _procedural_slide_positions[1]
+	_slide_fire_time = minf(_slide_fire_time + delta, PISTOL_SLIDE_DURATION)
+	var progress := _slide_fire_time / PISTOL_SLIDE_DURATION
+	var slide_amount := sin(progress * PI)
+	slide.position = rest_position + Vector3(
+		0.0,
+		0.0,
+		-PISTOL_SLIDE_DISTANCE * slide_amount
+	)
+
+	if _slide_fire_time >= PISTOL_SLIDE_DURATION:
+		slide.position = rest_position
+		_slide_fire_time = -1.0
 
 
 func _apply_recoil() -> void:
