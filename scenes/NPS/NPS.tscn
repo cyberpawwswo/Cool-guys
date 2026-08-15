@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://bduymu5fnbnmf"]
+
+[ext_resource type="Script" uid="uid://dt2ob3u1u2cji" path="res://scenes/NPS/nps.gd" id="1_c4wdx"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m0omp"]
+albedo_color = Color(1, 0.27450982, 0, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_m7xwh"]
+material = SubResource("StandardMaterial3D_m0omp")
+
+[node name="NPS" type="CharacterBody3D" unique_id=567071229]
+script = ExtResource("1_c4wdx")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=875007276]
+shape = SubResource("CapsuleShape3D_0x52n")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=77660770]
+mesh = SubResource("CapsuleMesh_m7xwh")
