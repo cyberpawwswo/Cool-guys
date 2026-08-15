@@ -5,9 +5,12 @@
 [ext_resource type="PackedScene" uid="uid://csrwnvgh81t7w" path="res://scenes/player/player.tscn" id="1_i0vk3"]
 [ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_lbjl6"]
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
+[ext_resource type="Script" path="res://scenes/levels/test_level/dark_mode.gd" id="6_darkmode"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2vomh"]
 albedo_color = Color(0.16315243, 0.16315243, 0.1631524, 1)
+roughness = 0.5
+specular = 1.0
 
 [sub_resource type="Resource" id="Resource_6eemo"]
 script = ExtResource("2_lbjl6")
@@ -28,7 +31,10 @@ sky = SubResource("Sky_62kbb")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i0vk3"]
 albedo_texture = ExtResource("1_62kbb")
+albedo_color = Color(1, 1, 1, 1)
 uv1_triplanar = true
+roughness = 0.4
+specular = 1.0
 
 [sub_resource type="BoxMesh" id="BoxMesh_0x52n"]
 material = SubResource("StandardMaterial3D_i0vk3")
@@ -38,6 +44,13 @@ size = Vector3(45.821136, 1, 60.683487)
 data = PackedVector3Array(-22.910599, 0.5, 30.3417, 22.910599, 0.5, 30.3417, -22.910599, -0.5, 30.3417, 22.910599, 0.5, 30.3417, 22.910599, -0.5, 30.3417, -22.910599, -0.5, 30.3417, 22.910599, 0.5, -30.3417, -22.910599, 0.5, -30.3417, 22.910599, -0.5, -30.3417, -22.910599, 0.5, -30.3417, -22.910599, -0.5, -30.3417, 22.910599, -0.5, -30.3417, 22.910599, 0.5, 30.3417, 22.910599, 0.5, -30.3417, 22.910599, -0.5, 30.3417, 22.910599, 0.5, -30.3417, 22.910599, -0.5, -30.3417, 22.910599, -0.5, 30.3417, -22.910599, 0.5, -30.3417, -22.910599, 0.5, 30.3417, -22.910599, -0.5, -30.3417, -22.910599, 0.5, 30.3417, -22.910599, -0.5, 30.3417, -22.910599, -0.5, -30.3417, 22.910599, 0.5, 30.3417, -22.910599, 0.5, 30.3417, 22.910599, 0.5, -30.3417, -22.910599, 0.5, 30.3417, -22.910599, 0.5, -30.3417, 22.910599, 0.5, -30.3417, -22.910599, -0.5, 30.3417, 22.910599, -0.5, 30.3417, -22.910599, -0.5, -30.3417, 22.910599, -0.5, 30.3417, 22.910599, -0.5, -30.3417, -22.910599, -0.5, -30.3417)
 
 [node name="TestLevel" type="Node3D" unique_id=2058491382]
+
+[node name="DarkMode" type="Node" parent="." node_paths=PackedStringArray("sun")]
+script = ExtResource("6_darkmode")
+floor_material = SubResource("StandardMaterial3D_i0vk3")
+inner_material = SubResource("StandardMaterial3D_2vomh")
+sun = NodePath("../DirectionalLight3D")
+environment = SubResource("Environment_uxvkn")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2026878185]
 transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)

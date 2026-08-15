@@ -1,10 +1,6 @@
-[gd_scene format=3 uid="uid://bo48vpl8xntiy"]
+[gd_scene format=3]
 
-[ext_resource type="Script" uid="uid://cs1m44gmegdvt" path="res://scenes/ui/main_menu/main_menu.gd" id="1_1ch07"]
-[ext_resource type="Shader" path="res://scenes/ui/main_menu/psychedelic_bg.gdshader" id="2_pshy"]
-
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
-shader = ExtResource("2_pshy")
+[ext_resource type="Script" path="res://scenes/ui/pause_menu/pause_menu_bw.gd" id="1_bw"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
 content_margin_left = 56.0
@@ -66,16 +62,16 @@ corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
 
-[node name="MainMenu" type="Control"]
+[node name="PauseMenuBW" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-script = ExtResource("1_1ch07")
+script = ExtResource("1_bw")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Dim" type="ColorRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -83,8 +79,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-material = SubResource("ShaderMaterial_bg")
-color = Color(1, 1, 1, 1)
+color = Color(0.08, 0.08, 0.08, 0.85)
 
 [node name="CenterContainer" type="CenterContainer" parent="."]
 layout_mode = 1
@@ -105,22 +100,15 @@ theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_colors/font_shadow_color = Color(0.55, 0.55, 0.55, 0.45)
 theme_override_constants/shadow_offset_x = 4
 theme_override_constants/shadow_offset_y = 6
-theme_override_font_sizes/font_size = 72
-text = "COOL GUYS"
-horizontal_alignment = 1
-
-[node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.35, 0.35, 0.35, 0.9)
-theme_override_font_sizes/font_size = 22
-text = "Бодайся головой — и побеждай!"
+theme_override_font_sizes/font_size = 64
+text = "ПАУЗА"
 horizontal_alignment = 1
 
 [node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 custom_minimum_size = Vector2(0, 24)
 
-[node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="ResumeButton" type="Button" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
@@ -130,9 +118,9 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
 theme_override_styles/focus = SubResource("StyleBoxFlat_focus")
-text = "Играть"
+text = "Продолжить"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="ExitTheMenuButton" type="Button" parent="CenterContainer/VBoxContainer"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
@@ -142,25 +130,7 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
 theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
 theme_override_styles/focus = SubResource("StyleBoxFlat_focus")
-text = "Выход"
+text = "Выйти в меню"
 
-[node name="Footer" type="Label" parent="."]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -250.0
-offset_top = -60.0
-offset_right = 250.0
-offset_bottom = -24.0
-grow_horizontal = 2
-grow_vertical = 0
-theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.45)
-theme_override_font_sizes/font_size = 16
-text = "Игровой джем • бодайся головой"
-horizontal_alignment = 1
-
-[connection signal="pressed" from="CenterContainer/VBoxContainer/PlayButton" to="." method="_on_play_button_pressed"]
-[connection signal="pressed" from="CenterContainer/VBoxContainer/QuitButton" to="." method="_on_quit_button_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ResumeButton" to="." method="_on_resume_button_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/ExitTheMenuButton" to="." method="_on_exit_the_menu_button_pressed"]

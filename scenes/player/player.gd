@@ -40,9 +40,18 @@ extends CharacterBody3D
 @export var headbutt_windup_tilt_degrees := 42.0
 @export var headbutt_tilt_degrees := 18.0
 
+@export_category("Black & White")
+@export var blink_interval := 1.0
+@export var blink_strength := 0.45
+@export var blink_fade_speed := 3.5
+
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
 @onready var weapon_manager = $Control/ViewmodelContainer/ViewmodelViewport/ViewmodelCamera/WeaponManager
+@onready var gray_filter: ColorRect = $Effects/GrayFilter
+@onready var blink_overlay: ColorRect = $Effects/BlinkOverlay
+@onready var pause_menu: Control = $PauseMenus/PauseMenu
+@onready var pause_menu_bw: Control = $PauseMenus/PauseMenuBW
 
 var _camera_start_position := Vector3.ZERO
 var _camera_start_fov := 75.0
@@ -64,6 +73,10 @@ var _headbutt_cooldown_left := 0.0
 var _headbutt_has_hit := false
 var _suppress_attack_this_frame := false
 
+var _black_white_mode := false
+var _blink_timer := 0.0
+var _blink_alpha := 0.0
+
 
 func _ready() -> void:
 	_camera_start_position = camera.position
@@ -71,13 +84,17 @@ func _ready() -> void:
 	_look_pitch = camera.rotation.x
 	_was_on_floor = is_on_floor()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	gray_filter.visible = false
+	blink_overlay.color.a = 0.0
+	pause_menu_bw.visible = false
 
 
 func _input(event: InputEvent) -> void:
 	weapon_manager.handle_input(event)
 
 	if event.is_action_pressed("ui_cancel"):
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		_open_pause_menu()
+		get_viewport().set_input_as_handled()
 		return
 
 	if event is InputEventMouseButton and event.pressed:
@@ -99,6 +116,40 @@ func _input(event: InputEvent) -> void:
 			-turn_roll_degrees,
 			turn_roll_degrees
 		)
+
+
+func _toggle_black_white_mode() -> void:
+	_black_white_mode = not _black_white_mode
+	gray_filter.visible = _black_white_mode
+	_blink_timer = 0.0
+	if not _black_white_mode:
+		_blink_alpha = 0.0
+		blink_overlay.color.a = 0.0
+	var level := get_tree().current_scene
+	if level:
+		var dark_mode := level.get_node_or_null("DarkMode")
+		if dark_mode and dark_mode.has_method("set_dark_mode"):
+			dark_mode.set_dark_mode(_black_white_mode)
+
+
+func _update_blink(delta: float) -> void:
+	if not _black_white_mode:
+		return
+	_blink_timer += delta
+	if _blink_timer >= blink_interval:
+		_blink_timer = 0.0
+		_blink_alpha = blink_strength
+	_blink_alpha = maxf(_blink_alpha - delta * blink_fade_speed, 0.0)
+	blink_overlay.color.a = _blink_alpha
+
+
+func _open_pause_menu() -> void:
+	get_tree().paused = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	if _black_white_mode:
+		pause_menu_bw.open()
+	else:
+		pause_menu.open()
 
 
 func _physics_process(delta: float) -> void:
@@ -136,6 +187,9 @@ func _process(delta: float) -> void:
 			_perform_attack()
 	if Input.is_action_just_pressed("strong_attack"):
 		_start_headbutt()
+	if Input.is_action_just_pressed("black_white"):
+		_toggle_black_white_mode()
+	_update_blink(delta)
 	_suppress_attack_this_frame = false
 
 	var headbutt_pose := _update_headbutt(delta)

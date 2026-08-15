@@ -61,37 +61,46 @@ func _update_pivot(node: Control) -> void:
 
 
 func _input(event: InputEvent) -> void:
-	# ui_cancel по умолчанию привязан к Esc
-	if event.is_action_pressed("ui_cancel"):
-		toggle_pause()
+	# Esc снимает паузу только из видимого меню (открывает его игрок)
+	if event.is_action_pressed("ui_cancel") and visible:
+		_close_self()
 
-func toggle_pause() -> void:
-	var is_paused := not get_tree().paused
-	get_tree().paused = is_paused
-	visible = is_paused
 
-	if is_paused:
-		var menu_box := $CenterContainer/VBoxContainer
-		menu_box.modulate.a = 0.0
-		var tween := create_tween()
-		tween.tween_property(menu_box, "modulate:a", 1.0, 0.25)
-		$CenterContainer/VBoxContainer/ResumeButton.grab_focus()
+func open() -> void:
+	visible = true
+	_blood_time = 0.0
+	var menu_box := $CenterContainer/VBoxContainer
+	menu_box.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(menu_box, "modulate:a", 1.0, 0.25)
+	$CenterContainer/VBoxContainer/ResumeButton.grab_focus()
 
-	# Опционально: показываем/прячем курсор во время паузы
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if is_paused else Input.MOUSE_MODE_CAPTURED
+
+func close() -> void:
+	visible = false
+
+
+func _close_self() -> void:
+	get_tree().paused = false
+	visible = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
 
 func _on_button_hovered(button: Button) -> void:
 	var tween := create_tween()
 	var anim := tween.tween_property(button, "scale", Vector2(1.06, 1.06), 0.12)
 	anim.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
+
 func _on_button_unhovered(button: Button) -> void:
 	var tween := create_tween()
 	var anim := tween.tween_property(button, "scale", Vector2.ONE, 0.12)
 	anim.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
+
 func _on_resume_button_pressed() -> void:
-	toggle_pause() # Снимет паузу и спрячет меню
+	_close_self() # Снимет паузу и спрячет меню
+
 
 func _on_exit_the_menu_button_pressed() -> void:
 	get_tree().paused = false # На всякий случай снимаем паузу перед сменой сцены

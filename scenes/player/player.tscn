@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://qjm6j41bdfws" path="res://scenes/player/player.gd" id="1_8afob"]
 [ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="2_dovo2"]
 [ext_resource type="Script" uid="uid://ff5cr1c4rnjo" path="res://scenes/player/weapon_manager.gd" id="2_weapon"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu/PauseMenuBW.tscn" id="3_bwmenu"]
+[ext_resource type="Script" path="res://scenes/glow/glow_body.gd" id="4_glow"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
 
@@ -10,6 +12,19 @@
 ambient_light_source = 2
 ambient_light_color = Color(0.72, 0.76, 0.84, 1)
 ambient_light_energy = 1.35
+
+[sub_resource type="Shader" id="Shader_grayscale"]
+code = "shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
+
+void fragment() {
+	vec3 col = texture(screen_tex, SCREEN_UV).rgb;
+	float gray = dot(col, vec3(0.299, 0.587, 0.114));
+	COLOR = vec4(vec3(gray), 1.0);
+}"
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_grayscale"]
+shader = SubResource("Shader_grayscale")
 
 [node name="Player" type="CharacterBody3D" unique_id=1040782523]
 script = ExtResource("1_8afob")
@@ -124,4 +139,36 @@ horizontal_alignment = 2
 [node name="Node3D" type="Node3D" parent="." unique_id=508049726]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.51845044, -0.97542)
 
-[node name="PauseMenu" parent="." unique_id=1650188435 instance=ExtResource("2_dovo2")]
+[node name="Effects" type="CanvasLayer" parent="."]
+layer = 1
+
+[node name="GrayFilter" type="ColorRect" parent="Effects"]
+material = SubResource("ShaderMaterial_grayscale")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+
+[node name="BlinkOverlay" type="ColorRect" parent="Effects"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0)
+
+[node name="PauseMenus" type="CanvasLayer" parent="."]
+layer = 2
+
+[node name="PauseMenu" parent="PauseMenus" unique_id=1650188435 instance=ExtResource("2_dovo2")]
+
+[node name="PauseMenuBW" parent="PauseMenus" instance=ExtResource("3_bwmenu")]
+
+[node name="GlowBody" type="Node" parent="." groups=["glow_body"]]
+script = ExtResource("4_glow")
