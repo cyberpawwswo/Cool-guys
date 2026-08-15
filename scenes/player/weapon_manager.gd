@@ -5,6 +5,8 @@ signal weapon_changed(index: int, display_name: String)
 
 const PISTOL_SLIDE_DURATION := 0.12
 const PISTOL_SLIDE_DISTANCE := 0.035
+const PISTOL_RELOAD_START := 0.6333333
+const PISTOL_RELOAD_END := 1.9333333
 
 @export_category("Viewmodel Motion")
 @export var motion_smoothing := 19.0
@@ -35,7 +37,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"scene": preload("res://assets/weapons/pistol/source/arms@beretta.fbx"),
 		"attack_animations": [],
 		"procedural_fire": true,
-		"reload_animation": StringName(),
+		"reload_animation": &"CINEMA_4D_Main",
 		"equip_animation": StringName(),
 		"idle_animation": StringName(),
 		"cooldown": 0.35,
@@ -69,6 +71,7 @@ var _animation_players: Array[AnimationPlayer] = []
 var _procedural_slides: Array[Node3D] = []
 var _procedural_slide_positions: Array[Vector3] = []
 var _slide_fire_time := -1.0
+var _pistol_reload_active := false
 var _attack_cooldown_left := 0.0
 var _attack_variant := 0
 var _mouse_motion := Vector2.ZERO
@@ -91,6 +94,9 @@ func _process(delta: float) -> void:
 	_update_viewmodel_motion(delta)
 
 	var animation_player := _animation_players[current_weapon_index]
+	if _pistol_reload_active and current_weapon_index == 1 and not animation_player.is_playing():
+		_pistol_reload_active = false
+		animation_player.active = false
 	if animation_player and not animation_player.is_playing():
 		if WEAPON_DATA[current_weapon_index]["hide_when_idle"]:
 			_weapon_models[current_weapon_index].visible = false
@@ -135,6 +141,8 @@ func select_weapon(index: int, instant := false) -> void:
 		var player := _animation_players[slot_index]
 		if player and slot_index != wrapped_index:
 			player.stop()
+			if WEAPON_DATA[slot_index]["procedural_fire"]:
+				_reset_procedural_animation(slot_index)
 
 	current_weapon_index = wrapped_index
 	_attack_cooldown_left = 0.0
@@ -186,7 +194,23 @@ func reload_current_weapon() -> void:
 	if _attack_cooldown_left > 0.0:
 		return
 
-	var reload_animation: StringName = WEAPON_DATA[current_weapon_index]["reload_animation"]
+	var data := WEAPON_DATA[current_weapon_index]
+	var reload_animation: StringName = data["reload_animation"]
+	if data["procedural_fire"]:
+		var pistol_player := _animation_players[current_weapon_index]
+		if pistol_player == null or not pistol_player.has_animation(reload_animation):
+			return
+		pistol_player.active = true
+		pistol_player.play_section(
+			reload_animation,
+			PISTOL_RELOAD_START,
+			PISTOL_RELOAD_END,
+			0.08
+		)
+		_pistol_reload_active = true
+		_attack_cooldown_left = PISTOL_RELOAD_END - PISTOL_RELOAD_START
+		return
+
 	if not _play_animation(reload_animation, 0.1):
 		return
 
@@ -333,6 +357,17 @@ func _play_procedural_fire() -> void:
 		return
 	_slide_fire_time = 0.0
 	slide.position = _procedural_slide_positions[current_weapon_index]
+
+
+func _reset_procedural_animation(index: int) -> void:
+	var player := _animation_players[index]
+	var animation_name: StringName = WEAPON_DATA[index]["reload_animation"]
+	player.active = true
+	player.play(animation_name)
+	player.seek(0.0, true)
+	player.stop(true)
+	player.active = false
+	_pistol_reload_active = false
 
 
 func _update_procedural_slide(delta: float) -> void:

@@ -53,6 +53,23 @@ func _run_test() -> void:
 		_fail("Beretta slide did not return after firing")
 		return
 
+	manager.select_weapon(1, true)
+	manager.reload_current_weapon()
+	var pistol_player: AnimationPlayer = manager._animation_players[1]
+	if not pistol_player.active or not pistol_player.is_playing():
+		_fail("Beretta reload section did not start")
+		return
+	pistol_player.advance(0.001)
+	var reload_position := pistol_player.get_current_animation_position()
+	if reload_position < manager.PISTOL_RELOAD_START - 0.01:
+		_fail("Beretta reload started before the reload section")
+		return
+	pistol_player.advance(2.0)
+	manager._process(0.01)
+	if pistol_player.is_playing() or pistol_player.active:
+		_fail("Beretta reload section did not finish cleanly")
+		return
+
 	manager.select_weapon(2, true)
 	var wheel_event := InputEventMouseButton.new()
 	wheel_event.button_index = MOUSE_BUTTON_WHEEL_DOWN
