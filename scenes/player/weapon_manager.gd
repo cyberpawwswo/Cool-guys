@@ -32,6 +32,11 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"muzzle_size": 0.27,
 		"muzzle_duration": 0.11,
 		"muzzle_light_energy": 18.0,
+		"fire_pitch_range": Vector2(0.94, 1.02),
+		"fire_tail_pitch": 0.72,
+		"fire_tail_volume_db": -8.0,
+		"view_recoil_position": Vector3(0.0, -0.026, 0.125),
+		"view_recoil_rotation": Vector3(10.5, 1.3, 2.6),
 		"uses_ammo": true,
 		"magazine_capacity": 6,
 		"starting_reserve": 24,
@@ -59,6 +64,11 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"muzzle_size": 0.14,
 		"muzzle_duration": 0.08,
 		"muzzle_light_energy": 9.0,
+		"fire_pitch_range": Vector2(0.97, 1.04),
+		"fire_tail_pitch": 0.84,
+		"fire_tail_volume_db": -11.0,
+		"view_recoil_position": Vector3(0.0, -0.01, 0.052),
+		"view_recoil_rotation": Vector3(4.8, 0.75, 1.15),
 		"uses_ammo": true,
 		"magazine_capacity": 15,
 		"starting_reserve": 60,
@@ -86,6 +96,11 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"muzzle_size": 0.0,
 		"muzzle_duration": 0.0,
 		"muzzle_light_energy": 0.0,
+		"fire_pitch_range": Vector2.ONE,
+		"fire_tail_pitch": 1.0,
+		"fire_tail_volume_db": -80.0,
+		"view_recoil_position": Vector3(0.0, -0.004, 0.018),
+		"view_recoil_rotation": Vector3(1.4, 0.2, 0.35),
 		"uses_ammo": false,
 		"magazine_capacity": 0,
 		"starting_reserve": 0,
@@ -111,6 +126,7 @@ var _weapon_slots: Array[Node3D] = []
 var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
 var _fire_audio_players: Array[AudioStreamPlayer] = []
+var _fire_tail_audio_players: Array[AudioStreamPlayer] = []
 var _reload_audio_players: Array[AudioStreamPlayer] = []
 var _muzzle_effect_roots: Array[Node3D] = []
 var _muzzle_anchors: Array[Node3D] = []
@@ -118,6 +134,7 @@ var _muzzle_flash_roots: Array[Node3D] = []
 var _muzzle_flash_lights: Array[OmniLight3D] = []
 var _muzzle_smoke_particles: Array[CPUParticles3D] = []
 var _muzzle_spark_particles: Array[CPUParticles3D] = []
+var _muzzle_gas_particles: Array[CPUParticles3D] = []
 var _muzzle_flash_times: Array[float] = []
 var _procedural_slides: Array[Node3D] = []
 var _procedural_slide_positions: Array[Vector3] = []
@@ -136,6 +153,8 @@ var _equip_amount := 0.0
 var _sprint_amount := 0.0
 var _recoil_position := Vector3.ZERO
 var _recoil_rotation := Vector3.ZERO
+var _recoil_position_velocity := Vector3.ZERO
+var _recoil_rotation_velocity := Vector3.ZERO
 var _shotgun_reload_delay := -1.0
 var _reload_speed_multiplier := 1.0
 var _black_white_mode := false
@@ -222,6 +241,8 @@ func select_weapon(index: int, instant := false) -> void:
 	_equip_amount = 1.0
 	_recoil_position = Vector3.ZERO
 	_recoil_rotation = Vector3.ZERO
+	_recoil_position_velocity = Vector3.ZERO
+	_recoil_rotation_velocity = Vector3.ZERO
 	_weapon_models[current_weapon_index].visible = not WEAPON_DATA[current_weapon_index]["hide_when_idle"]
 	_update_weapon_label()
 	_update_ammo_label()
@@ -440,6 +461,12 @@ func _create_weapon(index: int) -> void:
 		data["fire_volume_db"],
 		4
 	))
+	_fire_tail_audio_players.append(_create_audio_player(
+		"FireTailAudio_%d" % (index + 1),
+		data["fire_sound"],
+		data["fire_tail_volume_db"],
+		4
+	))
 	_reload_audio_players.append(_create_audio_player(
 		"ReloadAudio_%d" % (index + 1),
 		data["reload_sound"],
@@ -483,7 +510,14 @@ func _play_audio(player: AudioStreamPlayer) -> void:
 
 
 func _play_fire_audio() -> void:
-	_play_audio(_fire_audio_players[current_weapon_index])
+	var data := WEAPON_DATA[current_weapon_index]
+	var pitch_range: Vector2 = data["fire_pitch_range"]
+	var fire_player := _fire_audio_players[current_weapon_index]
+	fire_player.pitch_scale = randf_range(pitch_range.x, pitch_range.y)
+	_play_audio(fire_player)
+	var tail_player := _fire_tail_audio_players[current_weapon_index]
+	tail_player.pitch_scale = float(data["fire_tail_pitch"])
+	_play_audio(tail_player)
 	if WEAPON_DATA[current_weapon_index]["display_name"] == "Boomstick":
 		_shotgun_reload_delay = SHOTGUN_RELOAD_DELAY
 
@@ -497,6 +531,7 @@ func _create_muzzle_flash(index: int, data: Dictionary, model: Node3D) -> void:
 		_muzzle_flash_lights.append(null)
 		_muzzle_smoke_particles.append(null)
 		_muzzle_spark_particles.append(null)
+		_muzzle_gas_particles.append(null)
 		_muzzle_flash_times.append(0.0)
 		return
 
@@ -544,6 +579,16 @@ void fragment() {
 	flash_mesh.layers = 2
 	flash_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	flash_root.add_child(flash_mesh)
+	var flash_glow := MeshInstance3D.new()
+	flash_glow.name = "FlashGlow"
+	flash_glow.mesh = _create_soft_particle_mesh(
+		Vector2.ONE * flash_size * 1.85,
+		Color(1.0, 0.28, 0.025, 0.42),
+		true
+	)
+	flash_glow.layers = 2
+	flash_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flash_root.add_child(flash_glow)
 
 	var flash_light := OmniLight3D.new()
 	flash_light.light_color = Color(1.0, 0.42, 0.1)
@@ -557,6 +602,8 @@ void fragment() {
 	effect_root.add_child(smoke_particles)
 	var spark_particles := _create_spark_particles(index, flash_size)
 	effect_root.add_child(spark_particles)
+	var gas_particles := _create_gas_particles(index, flash_size)
+	effect_root.add_child(gas_particles)
 
 	_muzzle_effect_roots.append(effect_root)
 	_muzzle_anchors.append(muzzle_anchor)
@@ -564,6 +611,7 @@ void fragment() {
 	_muzzle_flash_lights.append(flash_light)
 	_muzzle_smoke_particles.append(smoke_particles)
 	_muzzle_spark_particles.append(spark_particles)
+	_muzzle_gas_particles.append(gas_particles)
 	_muzzle_flash_times.append(0.0)
 
 
@@ -610,6 +658,11 @@ func _create_smoke_particles(index: int, flash_size: float) -> CPUParticles3D:
 	particles.initial_velocity_max = 0.5 if index == 0 else 0.34
 	particles.scale_amount_min = 0.7
 	particles.scale_amount_max = 1.75
+	var smoke_scale_curve := Curve.new()
+	smoke_scale_curve.add_point(Vector2(0.0, 0.18))
+	smoke_scale_curve.add_point(Vector2(0.22, 0.82))
+	smoke_scale_curve.add_point(Vector2(1.0, 1.0))
+	particles.scale_amount_curve = smoke_scale_curve
 	particles.mesh = _create_soft_particle_mesh(
 		Vector2.ONE * flash_size * (0.62 if index == 0 else 0.5),
 		Color(0.42, 0.44, 0.48, 0.22),
@@ -636,9 +689,42 @@ func _create_spark_particles(index: int, flash_size: float) -> CPUParticles3D:
 	particles.initial_velocity_max = 3.2 if index == 0 else 2.3
 	particles.scale_amount_min = 0.55
 	particles.scale_amount_max = 1.2
+	particles.angle_min = -35.0
+	particles.angle_max = 35.0
+	particles.particle_flag_align_y = true
 	particles.mesh = _create_soft_particle_mesh(
 		Vector2(flash_size * 0.07, flash_size * 0.62),
 		Color(1.0, 0.38, 0.025, 1.0),
+		true
+	)
+	particles.layers = 2
+	particles.emitting = false
+	return particles
+
+
+func _create_gas_particles(index: int, flash_size: float) -> CPUParticles3D:
+	var particles := CPUParticles3D.new()
+	particles.name = "MuzzleGas_%d" % (index + 1)
+	particles.amount = 18 if index == 0 else 10
+	particles.lifetime = 0.19 if index == 0 else 0.13
+	particles.one_shot = true
+	particles.explosiveness = 1.0
+	particles.randomness = 0.42
+	particles.local_coords = false
+	particles.direction = Vector3(0.0, 0.05, -1.0).normalized()
+	particles.spread = 30.0
+	particles.gravity = Vector3.ZERO
+	particles.initial_velocity_min = 0.5
+	particles.initial_velocity_max = 1.45 if index == 0 else 0.95
+	particles.scale_amount_min = 0.45
+	particles.scale_amount_max = 1.25
+	var gas_scale_curve := Curve.new()
+	gas_scale_curve.add_point(Vector2(0.0, 1.0))
+	gas_scale_curve.add_point(Vector2(1.0, 0.08))
+	particles.scale_amount_curve = gas_scale_curve
+	particles.mesh = _create_soft_particle_mesh(
+		Vector2.ONE * flash_size * (0.32 if index == 0 else 0.28),
+		Color(1.0, 0.31, 0.025, 0.78),
 		true
 	)
 	particles.layers = 2
@@ -693,6 +779,8 @@ func _trigger_muzzle_flash(index: int) -> void:
 	_muzzle_smoke_particles[index].emitting = true
 	_muzzle_spark_particles[index].restart()
 	_muzzle_spark_particles[index].emitting = true
+	_muzzle_gas_particles[index].restart()
+	_muzzle_gas_particles[index].emitting = true
 
 
 func _sync_muzzle_effect(index: int) -> void:
@@ -713,9 +801,9 @@ func _update_muzzle_flashes(delta: float) -> void:
 		_muzzle_flash_times[index] = maxf(_muzzle_flash_times[index] - delta, 0.0)
 		var duration := float(WEAPON_DATA[index]["muzzle_duration"])
 		var remaining := _muzzle_flash_times[index] / duration
-		flash_root.scale = Vector3.ONE * lerpf(1.35, 0.7, remaining)
+		flash_root.scale = Vector3.ONE * lerpf(1.8, 0.65, remaining)
 		_muzzle_flash_lights[index].light_energy = (
-			float(WEAPON_DATA[index]["muzzle_light_energy"]) * remaining
+			float(WEAPON_DATA[index]["muzzle_light_energy"]) * remaining * remaining
 		)
 		if _muzzle_flash_times[index] <= 0.0:
 			flash_root.visible = false
@@ -723,6 +811,7 @@ func _update_muzzle_flashes(delta: float) -> void:
 
 
 func _update_viewmodel_motion(delta: float) -> void:
+	_update_recoil_spring(delta)
 	var player := _get_player()
 	var local_velocity := Vector3.ZERO
 	var horizontal_speed := 0.0
@@ -797,8 +886,26 @@ func _update_viewmodel_motion(delta: float) -> void:
 
 	_mouse_motion = _mouse_motion.lerp(Vector2.ZERO, _exp_weight(18.0, delta))
 	_equip_amount = lerpf(_equip_amount, 0.0, _exp_weight(8.0, delta))
-	_recoil_position = _recoil_position.lerp(Vector3.ZERO, _exp_weight(15.0, delta))
-	_recoil_rotation = _recoil_rotation.lerp(Vector3.ZERO, _exp_weight(18.0, delta))
+
+
+func _update_recoil_spring(delta: float) -> void:
+	var step := minf(delta, 1.0 / 30.0)
+	_recoil_position_velocity += (
+		-_recoil_position * 185.0 - _recoil_position_velocity * 21.0
+	) * step
+	_recoil_rotation_velocity += (
+		-_recoil_rotation * 210.0 - _recoil_rotation_velocity * 23.0
+	) * step
+	_recoil_position += _recoil_position_velocity * step
+	_recoil_rotation += _recoil_rotation_velocity * step
+	if _recoil_position.length_squared() < 0.0000001:
+		_recoil_position = Vector3.ZERO
+	if _recoil_position_velocity.length_squared() < 0.0000001:
+		_recoil_position_velocity = Vector3.ZERO
+	if _recoil_rotation.length_squared() < 0.0000001:
+		_recoil_rotation = Vector3.ZERO
+	if _recoil_rotation_velocity.length_squared() < 0.0000001:
+		_recoil_rotation_velocity = Vector3.ZERO
 
 
 func _play_procedural_fire() -> void:
@@ -841,23 +948,28 @@ func _update_procedural_slide(delta: float) -> void:
 
 
 func _apply_recoil() -> void:
-	var recoil_scale := 0.75
-	if current_weapon_index == 0:
-		recoil_scale = 2.4
-	elif current_weapon_index == 1:
-		recoil_scale = 1.0
+	var data := WEAPON_DATA[current_weapon_index]
 	var side := -1.0 if _attack_variant % 2 == 0 else 1.0
-	_recoil_position += Vector3(side * 0.002, -0.003, 0.025) * recoil_scale
-	_recoil_rotation += Vector3(
-		deg_to_rad(1.65),
-		deg_to_rad(side * 0.35),
-		deg_to_rad(side * 0.45)
-	) * recoil_scale
+	var kick_position: Vector3 = data["view_recoil_position"]
+	kick_position.x += side * (0.008 if current_weapon_index == 0 else 0.003)
+	var kick_rotation_degrees: Vector3 = data["view_recoil_rotation"]
+	kick_rotation_degrees.y *= side
+	kick_rotation_degrees.z *= side
+	var kick_rotation := Vector3(
+		deg_to_rad(kick_rotation_degrees.x),
+		deg_to_rad(kick_rotation_degrees.y),
+		deg_to_rad(kick_rotation_degrees.z)
+	)
+	_recoil_position += kick_position * 0.35
+	_recoil_position_velocity += kick_position * 17.0
+	_recoil_rotation += kick_rotation * 0.32
+	_recoil_rotation_velocity += kick_rotation * 18.0
 	var player := _get_player()
 	if player and player.has_method("apply_weapon_recoil"):
 		player.call(
 			"apply_weapon_recoil",
-			float(WEAPON_DATA[current_weapon_index]["shot_effect_strength"])
+			float(data["shot_effect_strength"]),
+			current_weapon_index
 		)
 
 

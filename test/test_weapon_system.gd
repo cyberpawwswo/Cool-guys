@@ -24,7 +24,11 @@ func _run_test() -> void:
 	if manager.get_weapon_count() != 3:
 		_fail("Expected 3 weapons, got %d" % manager.get_weapon_count())
 		return
-	if manager._fire_audio_players.size() != 3 or manager._reload_audio_players.size() != 3:
+	if (
+		manager._fire_audio_players.size() != 3
+		or manager._fire_tail_audio_players.size() != 3
+		or manager._reload_audio_players.size() != 3
+	):
 		_fail("Expected audio players for all 3 weapon slots")
 		return
 	if (
@@ -33,6 +37,7 @@ func _run_test() -> void:
 		or manager._muzzle_flash_roots.size() != 3
 		or manager._muzzle_smoke_particles.size() != 3
 		or manager._muzzle_spark_particles.size() != 3
+		or manager._muzzle_gas_particles.size() != 3
 	):
 		_fail("Expected complete muzzle effect slots for all weapons")
 		return
@@ -68,12 +73,16 @@ func _run_test() -> void:
 		if index < 2 and not manager._fire_audio_players[index].playing:
 			_fail("Weapon %d fire sound did not play" % index)
 			return
+		if index < 2 and not manager._fire_tail_audio_players[index].playing:
+			_fail("Weapon %d low fire tail did not play" % index)
+			return
 		if index < 2 and (
 			manager._muzzle_flash_roots[index] == null
 			or not manager._muzzle_flash_roots[index].visible
 			or manager._muzzle_flash_lights[index].light_energy <= 0.0
 			or not manager._muzzle_smoke_particles[index].emitting
 			or not manager._muzzle_spark_particles[index].emitting
+			or not manager._muzzle_gas_particles[index].emitting
 		):
 			_fail("Weapon %d muzzle effects did not trigger" % index)
 			return
@@ -94,20 +103,44 @@ func _run_test() -> void:
 			or manager._muzzle_flash_roots[index] != null
 			or manager._muzzle_smoke_particles[index] != null
 			or manager._muzzle_spark_particles[index] != null
+			or manager._muzzle_gas_particles[index] != null
 		):
 			_fail("Leg Kick unexpectedly has muzzle effects")
 			return
 		if index == 1 and manager._animation_players[index].is_playing():
 			_fail("Beretta started the full reload animation after firing")
 			return
-	if player._weapon_recoil_pitch <= 0.0 or player._shot_flash_alpha <= 0.0:
-		_fail("Weapon fire did not trigger camera recoil and screen flash")
+	if (
+		player._weapon_recoil_pitch <= 0.0
+		or player._weapon_recoil_back <= 0.0
+		or player._weapon_recoil_kick_time <= 0.0
+		or player._shot_flash_alpha <= 0.0
+		or player._shot_concussion_strength <= 0.0
+		or player._shot_concussion_material == null
+	):
+		_fail("Weapon fire did not trigger layered camera recoil and screen effects")
+		return
+	if (
+		manager._recoil_position_velocity == Vector3.ZERO
+		or manager._recoil_rotation_velocity == Vector3.ZERO
+	):
+		_fail("Weapon fire did not trigger spring recoil")
 		return
 	manager._process(0.2)
 	for index in 2:
 		if manager._muzzle_flash_roots[index].visible:
 			_fail("Weapon %d muzzle flash did not finish" % index)
 			return
+	for frame in 120:
+		manager._process(1.0 / 60.0)
+	if (
+		manager._recoil_position.length() > 0.001
+		or manager._recoil_rotation.length() > 0.001
+		or manager._recoil_position_velocity.length() > 0.001
+		or manager._recoil_rotation_velocity.length() > 0.001
+	):
+		_fail("Spring recoil did not settle back to rest")
+		return
 
 	manager.select_weapon(0, true)
 	manager.reload_current_weapon()

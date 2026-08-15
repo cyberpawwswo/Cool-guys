@@ -86,10 +86,14 @@ var _weapon_recoil_pitch := 0.0
 var _weapon_recoil_yaw := 0.0
 var _weapon_recoil_roll := 0.0
 var _weapon_recoil_fov := 0.0
+var _weapon_recoil_back := 0.0
+var _weapon_recoil_kick_time := 0.0
 var _weapon_shake_time := 0.0
 var _weapon_shake_strength := 0.0
 var _weapon_shake_phase := 0.0
 var _shot_flash_alpha := 0.0
+var _shot_concussion_strength := 0.0
+var _shot_concussion_material: ShaderMaterial
 
 var _dash_time_left := 0.0
 var _dash_cooldown_left := 0.0
@@ -123,6 +127,7 @@ func _ready() -> void:
 	gray_filter.visible = false
 	blink_overlay.color.a = 0.0
 	shot_flash.color.a = 0.0
+	_create_shot_concussion_overlay()
 	pause_menu_bw.visible = false
 	_step_sound.loop = true
 	_run_sound.loop = true
@@ -250,25 +255,70 @@ func _process(delta: float) -> void:
 	_update_camera(delta, headbutt_pose)
 
 
-func apply_weapon_recoil(strength: float) -> void:
+func apply_weapon_recoil(strength: float, weapon_index := 0) -> void:
+	var shotgun_multiplier := 1.18 if weapon_index == 0 else 1.0
 	_weapon_recoil_pitch = minf(
-		_weapon_recoil_pitch + deg_to_rad(4.5) * strength,
-		deg_to_rad(8.0)
+		_weapon_recoil_pitch + deg_to_rad(8.5) * strength * shotgun_multiplier,
+		deg_to_rad(14.0)
 	)
-	_weapon_recoil_yaw += deg_to_rad(randf_range(-1.2, 1.2)) * strength
-	_weapon_recoil_roll += deg_to_rad(randf_range(-1.4, 1.4)) * strength
-	_weapon_recoil_fov = maxf(_weapon_recoil_fov, 2.4 * strength)
-	_weapon_shake_time = maxf(_weapon_shake_time, 0.12 + 0.08 * strength)
-	_weapon_shake_strength = maxf(_weapon_shake_strength, 0.035 * strength)
-	_shot_flash_alpha = maxf(_shot_flash_alpha, 0.38 * strength)
+	_weapon_recoil_yaw += deg_to_rad(randf_range(-2.0, 2.0)) * strength
+	_weapon_recoil_roll += deg_to_rad(randf_range(-2.4, 2.4)) * strength
+	_weapon_recoil_fov = maxf(_weapon_recoil_fov, 4.6 * strength)
+	_weapon_recoil_back = maxf(_weapon_recoil_back, 0.065 * strength * shotgun_multiplier)
+	_weapon_recoil_kick_time = maxf(_weapon_recoil_kick_time, 0.085)
+	_weapon_shake_time = maxf(_weapon_shake_time, 0.16 + 0.16 * strength)
+	_weapon_shake_strength = maxf(_weapon_shake_strength, 0.062 * strength)
+	_shot_flash_alpha = maxf(_shot_flash_alpha, 0.52 * strength)
+	_shot_concussion_strength = maxf(_shot_concussion_strength, 0.72 * strength)
+
+
+func _create_shot_concussion_overlay() -> void:
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear;
+uniform float strength : hint_range(0.0, 1.0) = 0.0;
+
+void fragment() {
+	vec2 radial = SCREEN_UV - vec2(0.5);
+	float distance_from_center = length(radial);
+	float split = strength * 0.009 * (1.0 - smoothstep(0.1, 0.75, distance_from_center));
+	vec2 offset = radial * split;
+	vec3 color;
+	color.r = texture(screen_texture, SCREEN_UV + offset).r;
+	color.g = texture(screen_texture, SCREEN_UV).g;
+	color.b = texture(screen_texture, SCREEN_UV - offset).b;
+	float edge = smoothstep(0.18, 0.72, distance_from_center);
+	color *= 1.0 - edge * strength * 0.42;
+	color += vec3(1.0, 0.62, 0.24) * strength * (1.0 - edge) * 0.16;
+	COLOR = vec4(color, 1.0);
+}
+"""
+	_shot_concussion_material = ShaderMaterial.new()
+	_shot_concussion_material.shader = shader
+	_shot_concussion_material.set_shader_parameter("strength", 0.0)
+	var overlay := ColorRect.new()
+	overlay.name = "ShotConcussion"
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.material = _shot_concussion_material
+	$Effects.add_child(overlay)
+	$Effects.move_child(overlay, shot_flash.get_index())
 
 
 func _update_shot_flash(delta: float) -> void:
 	if _black_white_mode:
 		_shot_flash_alpha = 0.0
+		_shot_concussion_strength = 0.0
 		shot_flash.color.a = 0.0
+		_shot_concussion_material.set_shader_parameter("strength", 0.0)
 		return
-	_shot_flash_alpha = maxf(_shot_flash_alpha - delta * 2.8, 0.0)
+	_shot_flash_alpha = maxf(_shot_flash_alpha - delta * 3.2, 0.0)
+	_shot_concussion_strength = maxf(_shot_concussion_strength - delta * 4.6, 0.0)
+	_shot_concussion_material.set_shader_parameter(
+		"strength",
+		_shot_concussion_strength
+	)
 	shot_flash.color = Color(
 		1.0,
 		1.0 if _black_white_mode else 0.92,
@@ -538,8 +588,9 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 		bob_offset.y = sin(_bob_time * TAU) * bob_amount
 
 	_weapon_shake_time = maxf(_weapon_shake_time - delta, 0.0)
-	_weapon_shake_phase += delta * 72.0
-	var shake_ratio := clampf(_weapon_shake_time / 0.2, 0.0, 1.0)
+	_weapon_recoil_kick_time = maxf(_weapon_recoil_kick_time - delta, 0.0)
+	_weapon_shake_phase += delta * 94.0
+	var shake_ratio := clampf(_weapon_shake_time / 0.32, 0.0, 1.0)
 	var shake_offset := Vector3.ZERO
 	var shake_rotation := Vector3.ZERO
 	if _weapon_shake_time > 0.0:
@@ -561,9 +612,10 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 	var target_roll := deg_to_rad(strafe_roll + _turn_roll_input)
 	var target_position := _camera_start_position + bob_offset + shake_offset
 	target_position.y += headbutt_pose.x - _landing_kick
-	target_position.z += headbutt_pose.y
+	target_position.z += headbutt_pose.y + _weapon_recoil_back
 
-	var smoothing := _exp_weight(camera_smoothing, delta)
+	var recoil_smoothing := 32.0 if _weapon_recoil_kick_time > 0.0 else camera_smoothing
+	var smoothing := _exp_weight(recoil_smoothing, delta)
 	camera.position = camera.position.lerp(target_position, smoothing)
 	camera.rotation.x = lerp_angle(
 		camera.rotation.x,
@@ -600,6 +652,7 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 	_weapon_recoil_yaw = lerpf(_weapon_recoil_yaw, 0.0, recoil_recovery)
 	_weapon_recoil_roll = lerpf(_weapon_recoil_roll, 0.0, recoil_recovery)
 	_weapon_recoil_fov = lerpf(_weapon_recoil_fov, 0.0, _exp_weight(14.0, delta))
+	_weapon_recoil_back = lerpf(_weapon_recoil_back, 0.0, _exp_weight(13.0, delta))
 	_weapon_shake_strength = lerpf(
 		_weapon_shake_strength,
 		0.0,
