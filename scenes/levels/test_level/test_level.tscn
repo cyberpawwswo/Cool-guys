@@ -5,7 +5,6 @@
 [ext_resource type="PackedScene" uid="uid://csrwnvgh81t7w" path="res://scenes/player/player.tscn" id="1_i0vk3"]
 [ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_lbjl6"]
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
-[ext_resource type="PackedScene" uid="uid://dxi3ygkej1cio" path="res://assets/weapons/aks74/source/hands_aks74_stalker_soc.fbx" id="5_qv4mi"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2vomh"]
 albedo_color = Color(0.16315243, 0.16315243, 0.1631524, 1)
@@ -69,6 +68,3 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.7821255, 0)
 
 [node name="RigidBody3D" parent="." unique_id=1909331113 instance=ExtResource("4_uxvkn")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0630054, 4.6511745)
-
-[node name="hands_aks74_stalker_soc" parent="." unique_id=1414044982 instance=ExtResource("5_qv4mi")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.16962, 0.8502996, -5.8924546)
