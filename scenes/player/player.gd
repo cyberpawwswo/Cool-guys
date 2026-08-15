@@ -218,15 +218,15 @@ func apply_weapon_recoil(strength: float) -> void:
 	_weapon_recoil_fov = maxf(_weapon_recoil_fov, 2.4 * strength)
 	_weapon_shake_time = maxf(_weapon_shake_time, 0.12 + 0.08 * strength)
 	_weapon_shake_strength = maxf(_weapon_shake_strength, 0.035 * strength)
-	_shot_flash_alpha = maxf(_shot_flash_alpha, 0.2 * strength)
+	_shot_flash_alpha = maxf(_shot_flash_alpha, 0.38 * strength)
 
 
 func _update_shot_flash(delta: float) -> void:
-	_shot_flash_alpha = maxf(_shot_flash_alpha - delta * 3.8, 0.0)
+	_shot_flash_alpha = maxf(_shot_flash_alpha - delta * 2.8, 0.0)
 	shot_flash.color = Color(
 		1.0,
-		1.0 if _black_white_mode else 0.78,
-		1.0 if _black_white_mode else 0.42,
+		1.0 if _black_white_mode else 0.92,
+		1.0 if _black_white_mode else 0.7,
 		_shot_flash_alpha
 	)
 

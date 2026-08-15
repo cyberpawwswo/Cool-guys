@@ -27,8 +27,14 @@ func _run_test() -> void:
 	if manager._fire_audio_players.size() != 3 or manager._reload_audio_players.size() != 3:
 		_fail("Expected audio players for all 3 weapon slots")
 		return
-	if manager._muzzle_flash_roots.size() != 3:
-		_fail("Expected muzzle flash slots for all weapons")
+	if (
+		manager._muzzle_effect_roots.size() != 3
+		or manager._muzzle_anchors.size() != 3
+		or manager._muzzle_flash_roots.size() != 3
+		or manager._muzzle_smoke_particles.size() != 3
+		or manager._muzzle_spark_particles.size() != 3
+	):
+		_fail("Expected complete muzzle effect slots for all weapons")
 		return
 	for index in 2:
 		if manager._fire_audio_players[index].max_polyphony < 4:
@@ -66,8 +72,15 @@ func _run_test() -> void:
 			manager._muzzle_flash_roots[index] == null
 			or not manager._muzzle_flash_roots[index].visible
 			or manager._muzzle_flash_lights[index].light_energy <= 0.0
+			or not manager._muzzle_smoke_particles[index].emitting
+			or not manager._muzzle_spark_particles[index].emitting
 		):
-			_fail("Weapon %d muzzle flash did not trigger" % index)
+			_fail("Weapon %d muzzle effects did not trigger" % index)
+			return
+		if index < 2 and not manager._muzzle_effect_roots[index].global_position.is_equal_approx(
+			manager._muzzle_anchors[index].global_position
+		):
+			_fail("Weapon %d muzzle effects did not follow the barrel" % index)
 			return
 		if index == 2 and manager._fire_audio_players[index].stream != null:
 			_fail("Leg Kick unexpectedly has a fire sound")
@@ -75,8 +88,14 @@ func _run_test() -> void:
 		if index == 2 and manager.ammo_label.visible:
 			_fail("Leg Kick unexpectedly shows the ammo HUD")
 			return
-		if index == 2 and manager._muzzle_flash_roots[index] != null:
-			_fail("Leg Kick unexpectedly has a muzzle flash")
+		if index == 2 and (
+			manager._muzzle_effect_roots[index] != null
+			or manager._muzzle_anchors[index] != null
+			or manager._muzzle_flash_roots[index] != null
+			or manager._muzzle_smoke_particles[index] != null
+			or manager._muzzle_spark_particles[index] != null
+		):
+			_fail("Leg Kick unexpectedly has muzzle effects")
 			return
 		if index == 1 and manager._animation_players[index].is_playing():
 			_fail("Beretta started the full reload animation after firing")

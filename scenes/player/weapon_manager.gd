@@ -27,10 +27,10 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"fire_volume_db": 2.0,
 		"reload_volume_db": -3.0,
 		"shot_effect_strength": 1.0,
-		"muzzle_position": Vector3(-0.1, -0.06, -0.85),
-		"muzzle_size": 0.18,
-		"muzzle_duration": 0.09,
-		"muzzle_light_energy": 11.0,
+		"muzzle_position": Vector3(-0.1, -0.06, -0.98),
+		"muzzle_size": 0.27,
+		"muzzle_duration": 0.11,
+		"muzzle_light_energy": 18.0,
 		"uses_ammo": true,
 		"magazine_capacity": 6,
 		"starting_reserve": 24,
@@ -54,10 +54,10 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"fire_volume_db": 0.5,
 		"reload_volume_db": -3.0,
 		"shot_effect_strength": 0.42,
-		"muzzle_position": Vector3(0.14, -0.1, -0.82),
-		"muzzle_size": 0.1,
-		"muzzle_duration": 0.065,
-		"muzzle_light_energy": 6.0,
+		"muzzle_position": Vector3(0.17, -0.14, -0.82),
+		"muzzle_size": 0.14,
+		"muzzle_duration": 0.08,
+		"muzzle_light_energy": 9.0,
 		"uses_ammo": true,
 		"magazine_capacity": 15,
 		"starting_reserve": 60,
@@ -111,8 +111,12 @@ var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
 var _fire_audio_players: Array[AudioStreamPlayer] = []
 var _reload_audio_players: Array[AudioStreamPlayer] = []
+var _muzzle_effect_roots: Array[Node3D] = []
+var _muzzle_anchors: Array[Node3D] = []
 var _muzzle_flash_roots: Array[Node3D] = []
 var _muzzle_flash_lights: Array[OmniLight3D] = []
+var _muzzle_smoke_particles: Array[CPUParticles3D] = []
+var _muzzle_spark_particles: Array[CPUParticles3D] = []
 var _muzzle_flash_times: Array[float] = []
 var _procedural_slides: Array[Node3D] = []
 var _procedural_slide_positions: Array[Vector3] = []
@@ -417,7 +421,7 @@ func _create_weapon(index: int) -> void:
 		data["reload_volume_db"],
 		1
 	))
-	_create_muzzle_flash(index, data)
+	_create_muzzle_flash(index, data, model)
 	_configure_idle_loop(index, animation_player)
 	slot.visible = false
 
@@ -453,24 +457,34 @@ func _play_audio(player: AudioStreamPlayer) -> void:
 	player.play()
 
 
-func _create_muzzle_flash(index: int, data: Dictionary) -> void:
+func _create_muzzle_flash(index: int, data: Dictionary, model: Node3D) -> void:
 	var flash_size := float(data["muzzle_size"])
 	if flash_size <= 0.0:
+		_muzzle_effect_roots.append(null)
+		_muzzle_anchors.append(null)
 		_muzzle_flash_roots.append(null)
 		_muzzle_flash_lights.append(null)
+		_muzzle_smoke_particles.append(null)
+		_muzzle_spark_particles.append(null)
 		_muzzle_flash_times.append(0.0)
 		return
 
+	var desired_global_position := to_global(data["muzzle_position"])
+	var muzzle_anchor := _create_muzzle_anchor(index, model, desired_global_position)
+	var effect_root := Node3D.new()
+	effect_root.name = "MuzzleEffects_%d" % (index + 1)
+	add_child(effect_root)
+	effect_root.global_position = muzzle_anchor.global_position
+
 	var flash_root := Node3D.new()
 	flash_root.name = "MuzzleFlash_%d" % (index + 1)
-	flash_root.position = data["muzzle_position"]
 	flash_root.visible = false
-	add_child(flash_root)
+	effect_root.add_child(flash_root)
 
 	var flash_shader := Shader.new()
 	flash_shader.code = """
 shader_type spatial;
-render_mode unshaded, blend_add, cull_disabled, depth_draw_never, fog_disabled;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, depth_test_disabled, fog_disabled;
 
 void fragment() {
 	vec2 centered = UV - vec2(0.5);
@@ -506,17 +520,135 @@ void fragment() {
 	flash_light.light_cull_mask = 2
 	flash_light.omni_range = 3.2
 	flash_light.shadow_enabled = false
-	flash_root.add_child(flash_light)
+	effect_root.add_child(flash_light)
 
+	var smoke_particles := _create_smoke_particles(index, flash_size)
+	effect_root.add_child(smoke_particles)
+	var spark_particles := _create_spark_particles(index, flash_size)
+	effect_root.add_child(spark_particles)
+
+	_muzzle_effect_roots.append(effect_root)
+	_muzzle_anchors.append(muzzle_anchor)
 	_muzzle_flash_roots.append(flash_root)
 	_muzzle_flash_lights.append(flash_light)
+	_muzzle_smoke_particles.append(smoke_particles)
+	_muzzle_spark_particles.append(spark_particles)
 	_muzzle_flash_times.append(0.0)
+
+
+func _create_muzzle_anchor(
+	index: int,
+	model: Node3D,
+	desired_global_position: Vector3
+) -> Node3D:
+	var anchor: Node3D
+	if index == 0:
+		var skeletons := model.find_children("*", "Skeleton3D", true, false)
+		var skeleton := skeletons[0] as Skeleton3D
+		var bone_attachment := BoneAttachment3D.new()
+		bone_attachment.name = "BoomstickMuzzleAnchor"
+		bone_attachment.bone_name = &"weapon"
+		skeleton.add_child(bone_attachment)
+		var muzzle_offset := Node3D.new()
+		muzzle_offset.name = "MuzzleOffset"
+		bone_attachment.add_child(muzzle_offset)
+		anchor = muzzle_offset
+	else:
+		var pistol := model.find_child("pistol", true, false) as Node3D
+		var pistol_anchor := Node3D.new()
+		pistol_anchor.name = "BerettaMuzzleAnchor"
+		pistol.add_child(pistol_anchor)
+		anchor = pistol_anchor
+	anchor.global_position = desired_global_position
+	return anchor
+
+
+func _create_smoke_particles(index: int, flash_size: float) -> CPUParticles3D:
+	var particles := CPUParticles3D.new()
+	particles.name = "MuzzleSmoke_%d" % (index + 1)
+	particles.amount = 14 if index == 0 else 9
+	particles.lifetime = 1.05 if index == 0 else 0.72
+	particles.one_shot = true
+	particles.explosiveness = 0.82
+	particles.randomness = 0.5
+	particles.local_coords = false
+	particles.direction = Vector3(0.0, 0.35, -1.0).normalized()
+	particles.spread = 38.0
+	particles.gravity = Vector3(0.0, 0.3, 0.0)
+	particles.initial_velocity_min = 0.12
+	particles.initial_velocity_max = 0.5 if index == 0 else 0.34
+	particles.scale_amount_min = 0.7
+	particles.scale_amount_max = 1.75
+	particles.mesh = _create_soft_particle_mesh(
+		Vector2.ONE * flash_size * (0.62 if index == 0 else 0.5),
+		Color(0.42, 0.44, 0.48, 0.22),
+		false
+	)
+	particles.layers = 2
+	particles.emitting = false
+	return particles
+
+
+func _create_spark_particles(index: int, flash_size: float) -> CPUParticles3D:
+	var particles := CPUParticles3D.new()
+	particles.name = "MuzzleSparks_%d" % (index + 1)
+	particles.amount = 28 if index == 0 else 16
+	particles.lifetime = 0.3 if index == 0 else 0.21
+	particles.one_shot = true
+	particles.explosiveness = 1.0
+	particles.randomness = 0.35
+	particles.local_coords = false
+	particles.direction = Vector3(0.0, 0.0, -1.0)
+	particles.spread = 52.0
+	particles.gravity = Vector3(0.0, -2.4, 0.0)
+	particles.initial_velocity_min = 1.2
+	particles.initial_velocity_max = 3.2 if index == 0 else 2.3
+	particles.scale_amount_min = 0.55
+	particles.scale_amount_max = 1.2
+	particles.mesh = _create_soft_particle_mesh(
+		Vector2(flash_size * 0.07, flash_size * 0.62),
+		Color(1.0, 0.38, 0.025, 1.0),
+		true
+	)
+	particles.layers = 2
+	particles.emitting = false
+	return particles
+
+
+func _create_soft_particle_mesh(
+	size: Vector2,
+	color: Color,
+	additive: bool
+) -> QuadMesh:
+	var shader := Shader.new()
+	shader.code = """
+shader_type spatial;
+render_mode unshaded, %s, cull_disabled, depth_draw_never, depth_test_disabled, fog_disabled;
+uniform vec4 particle_color : source_color;
+
+void fragment() {
+	float radius = length(UV - vec2(0.5));
+	float alpha = (1.0 - smoothstep(0.12, 0.5, radius)) * particle_color.a;
+	ALBEDO = particle_color.rgb;
+	EMISSION = particle_color.rgb * %s;
+	ALPHA = alpha;
+}
+""" % ["blend_add" if additive else "blend_mix", "7.5" if additive else "0.75"]
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("particle_color", color)
+	var quad := QuadMesh.new()
+	quad.size = size
+	quad.material = material
+	return quad
 
 
 func _trigger_muzzle_flash(index: int) -> void:
 	var flash_root := _muzzle_flash_roots[index]
 	if flash_root == null:
 		return
+	_muzzle_anchors[index].global_position = to_global(WEAPON_DATA[index]["muzzle_position"])
+	_sync_muzzle_effect(index)
 	_muzzle_flash_times[index] = float(WEAPON_DATA[index]["muzzle_duration"])
 	flash_root.scale = Vector3.ONE * 0.7
 	flash_root.rotation.z = randf_range(-0.35, 0.35)
@@ -524,12 +656,26 @@ func _trigger_muzzle_flash(index: int) -> void:
 	_muzzle_flash_lights[index].light_energy = float(
 		WEAPON_DATA[index]["muzzle_light_energy"]
 	)
+	_muzzle_smoke_particles[index].restart()
+	_muzzle_smoke_particles[index].emitting = true
+	_muzzle_spark_particles[index].restart()
+	_muzzle_spark_particles[index].emitting = true
+
+
+func _sync_muzzle_effect(index: int) -> void:
+	var effect_root := _muzzle_effect_roots[index]
+	var anchor := _muzzle_anchors[index]
+	if effect_root != null and anchor != null:
+		effect_root.global_position = anchor.global_position
 
 
 func _update_muzzle_flashes(delta: float) -> void:
 	for index in _muzzle_flash_roots.size():
 		var flash_root := _muzzle_flash_roots[index]
-		if flash_root == null or _muzzle_flash_times[index] <= 0.0:
+		if flash_root == null:
+			continue
+		_sync_muzzle_effect(index)
+		if _muzzle_flash_times[index] <= 0.0:
 			continue
 		_muzzle_flash_times[index] = maxf(_muzzle_flash_times[index] - delta, 0.0)
 		var duration := float(WEAPON_DATA[index]["muzzle_duration"])
