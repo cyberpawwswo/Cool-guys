@@ -18,6 +18,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Config="*uid://8mckxp2b1rh"
+GlowManager="*res://scenes/glow/glow_manager.gd"
 
 [display]
 

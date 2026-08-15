@@ -4,8 +4,6 @@
 [ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="2_dovo2"]
 [ext_resource type="Script" uid="uid://ff5cr1c4rnjo" path="res://scenes/player/weapon_manager.gd" id="2_weapon"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu/PauseMenuBW.tscn" id="3_bwmenu"]
-[ext_resource type="Script" path="res://scenes/glow/glow_body.gd" id="4_glow"]
-
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
 
 [sub_resource type="Environment" id="Environment_viewmodel"]
@@ -31,7 +29,7 @@ void fragment() {
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_grayscale"]
 shader = SubResource("Shader_grayscale")
 
-[node name="Player" type="CharacterBody3D" unique_id=1040782523]
+[node name="Player" type="CharacterBody3D" unique_id=1040782523 groups=["glow_body"]]
 script = ExtResource("1_8afob")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1736010953]
@@ -205,6 +203,3 @@ layer = 2
 [node name="PauseMenu" parent="PauseMenus" unique_id=1650188435 instance=ExtResource("2_dovo2")]
 
 [node name="PauseMenuBW" parent="PauseMenus" instance=ExtResource("3_bwmenu")]
-
-[node name="GlowBody" type="Node" parent="." groups=["glow_body"]]
-script = ExtResource("4_glow")

@@ -92,6 +92,4 @@ func set_dark_mode(dark: bool) -> void:
 				sky_mat.sky_horizon_color = Color(0.04, 0.04, 0.05, 1) if dark else _defaults.get("sky_horizon", Color(0.66, 0.67, 0.69, 1))
 				sky_mat.ground_horizon_color = Color(0.03, 0.03, 0.03, 1) if dark else _defaults.get("ground_horizon", Color(0.66, 0.67, 0.69, 1))
 				sky_mat.ground_bottom_color = Color(0.01, 0.01, 0.01, 1) if dark else _defaults.get("ground_bottom", Color(0.2, 0.17, 0.13, 1))
-	for glow: Node in get_tree().get_nodes_in_group("glow_body"):
-		if glow.has_method("set_glow"):
-			glow.set_glow(dark)
+	GlowManager.set_glow(dark)
