@@ -28,7 +28,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"fire_volume_db": 2.0,
 		"reload_volume_db": -3.0,
 		"shot_effect_strength": 1.0,
-		"muzzle_position": Vector3(0.16, -0.29, -0.98),
+		"muzzle_position": Vector3(0.16, -0.29, -1.18),
 		"muzzle_size": 0.27,
 		"muzzle_duration": 0.16,
 		"muzzle_light_energy": 18.0,
