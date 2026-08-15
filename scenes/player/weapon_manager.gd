@@ -28,7 +28,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"fire_volume_db": 2.0,
 		"reload_volume_db": -3.0,
 		"shot_effect_strength": 1.0,
-		"muzzle_position": Vector3(-0.1, -0.06, -0.98),
+		"muzzle_position": Vector3(0.16, -0.29, -0.98),
 		"muzzle_size": 0.27,
 		"muzzle_duration": 0.16,
 		"muzzle_light_energy": 18.0,
@@ -269,8 +269,8 @@ func play_attack() -> bool:
 		_weapon_models[current_weapon_index].visible = true
 		if data["procedural_fire"]:
 			_play_procedural_fire()
-		elif _animation_players[current_weapon_index].is_playing():
-			_animation_players[current_weapon_index].stop(true)
+		else:
+			_set_shotgun_ready_pose()
 		_play_fire_audio()
 		_trigger_muzzle_flash(current_weapon_index)
 		_consume_round()
@@ -328,6 +328,8 @@ func reload_current_weapon() -> void:
 		_attack_cooldown_left = (PISTOL_RELOAD_END - PISTOL_RELOAD_START) / _reload_speed_multiplier
 		return
 
+	if current_weapon_index == 0:
+		_set_shotgun_ready_pose()
 	if not _play_animation(reload_animation, 0.1):
 		return
 	_play_audio(_reload_audio_players[current_weapon_index])
@@ -394,6 +396,8 @@ func _finish_reload() -> void:
 		var player := _animation_players[weapon_index]
 		if player:
 			player.speed_scale = 1.0
+		if weapon_index == 0:
+			_set_shotgun_ready_pose()
 	if weapon_index < 0 or reload_amount <= 0:
 		return
 
@@ -417,6 +421,8 @@ func _cancel_reload() -> void:
 		var player := _animation_players[weapon_index]
 		if player:
 			player.speed_scale = 1.0
+		if weapon_index == 0:
+			_set_shotgun_ready_pose()
 
 
 func _emit_ammo_changed(weapon_index: int) -> void:
@@ -922,6 +928,18 @@ func _reset_procedural_animation(index: int) -> void:
 	player.stop(true)
 	player.active = false
 	_pistol_reload_active = false
+
+
+func _set_shotgun_ready_pose() -> void:
+	var player := _animation_players[0]
+	var equip_animation: StringName = WEAPON_DATA[0]["equip_animation"]
+	if player == null or not player.has_animation(equip_animation):
+		return
+	player.active = true
+	player.speed_scale = 1.0
+	player.play(equip_animation)
+	player.seek(player.get_animation(equip_animation).length, true)
+	player.stop(true)
 
 
 func _update_procedural_slide(delta: float) -> void:

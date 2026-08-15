@@ -175,6 +175,39 @@ func _run_test() -> void:
 	if manager.ammo_label.text != "6 / 23":
 		_fail("Boomstick ammo HUD did not update")
 		return
+	var shotgun_skeletons: Array[Node] = manager._weapon_models[0].find_children(
+		"*", "Skeleton3D", true, false
+	)
+	if shotgun_skeletons.is_empty():
+		_fail("Boomstick skeleton is missing")
+		return
+	var shotgun_skeleton := shotgun_skeletons[0] as Skeleton3D
+	var shotgun_ready_pose: Array[Transform3D] = []
+	for bone_index in shotgun_skeleton.get_bone_count():
+		shotgun_ready_pose.append(shotgun_skeleton.get_bone_pose(bone_index))
+	manager._attack_cooldown_left = 0.0
+	if not manager.play_attack():
+		_fail("Boomstick could not fire after reloading")
+		return
+	if shotgun_player.is_playing():
+		_fail("Boomstick started a conflicting skeletal fire animation")
+		return
+	manager._attack_cooldown_left = 0.0
+	manager.reload_current_weapon()
+	if not manager.is_reloading() or not shotgun_player.is_playing():
+		_fail("Boomstick could not start a second shell reload")
+		return
+	shotgun_player.advance(2.0)
+	manager._process(0.01)
+	if manager.is_reloading():
+		_fail("Boomstick second shell reload did not finish")
+		return
+	for bone_index in shotgun_skeleton.get_bone_count():
+		if not shotgun_skeleton.get_bone_pose(bone_index).is_equal_approx(
+			shotgun_ready_pose[bone_index]
+		):
+			_fail("Boomstick pose changed after repeated reload")
+			return
 
 	manager.select_weapon(1, true)
 	var pistol_slide: Node3D = manager._procedural_slides[1]
