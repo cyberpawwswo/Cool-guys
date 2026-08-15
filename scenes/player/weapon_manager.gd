@@ -21,6 +21,10 @@ const WEAPON_DATA: Array[Dictionary] = [
 	{
 		"display_name": "Boomstick",
 		"scene": preload("res://assets/weapons/shotgun/source/shotgunAnimated.fbx"),
+		"fire_sound": preload("res://assets/audio/weapons/boomstick_fire.mp3"),
+		"reload_sound": preload("res://assets/audio/weapons/boomstick_reload_shell.wav"),
+		"fire_volume_db": -4.0,
+		"reload_volume_db": -3.0,
 		"attack_animations": [&"Armature|Fire"],
 		"procedural_fire": false,
 		"reload_animation": &"Armature|ReloadOne",
@@ -35,6 +39,10 @@ const WEAPON_DATA: Array[Dictionary] = [
 	{
 		"display_name": "Beretta",
 		"scene": preload("res://assets/weapons/pistol/source/arms@beretta.fbx"),
+		"fire_sound": preload("res://assets/audio/weapons/beretta_fire.mp3"),
+		"reload_sound": preload("res://assets/audio/weapons/beretta_reload.mp3"),
+		"fire_volume_db": -4.0,
+		"reload_volume_db": -3.0,
 		"attack_animations": [],
 		"procedural_fire": true,
 		"reload_animation": &"CINEMA_4D_Main",
@@ -49,6 +57,10 @@ const WEAPON_DATA: Array[Dictionary] = [
 	{
 		"display_name": "Leg Kick",
 		"scene": preload("res://assets/weapons/legkick/source/legkick.fbx"),
+		"fire_sound": null,
+		"reload_sound": null,
+		"fire_volume_db": 0.0,
+		"reload_volume_db": 0.0,
 		"attack_animations": [&"Armature|Kick1", &"Armature|Kick2"],
 		"procedural_fire": false,
 		"reload_animation": StringName(),
@@ -68,6 +80,8 @@ var current_weapon_index := 0
 var _weapon_slots: Array[Node3D] = []
 var _weapon_models: Array[Node3D] = []
 var _animation_players: Array[AnimationPlayer] = []
+var _fire_audio_players: Array[AudioStreamPlayer] = []
+var _reload_audio_players: Array[AudioStreamPlayer] = []
 var _procedural_slides: Array[Node3D] = []
 var _procedural_slide_positions: Array[Vector3] = []
 var _slide_fire_time := -1.0
@@ -140,6 +154,7 @@ func select_weapon(index: int, instant := false) -> void:
 		var player := _animation_players[slot_index]
 		if player and slot_index != wrapped_index:
 			player.stop()
+			_reload_audio_players[slot_index].stop()
 			if WEAPON_DATA[slot_index]["procedural_fire"]:
 				_reset_procedural_animation(slot_index)
 
@@ -171,6 +186,7 @@ func play_attack() -> bool:
 		_attack_variant += 1
 		_weapon_models[current_weapon_index].visible = true
 		_play_procedural_fire()
+		_play_audio(_fire_audio_players[current_weapon_index])
 		_apply_recoil()
 		_attack_cooldown_left = data["cooldown"]
 		return true
@@ -184,6 +200,7 @@ func play_attack() -> bool:
 	_weapon_models[current_weapon_index].visible = true
 	if not _play_animation(animation_name, 0.04):
 		return false
+	_play_audio(_fire_audio_players[current_weapon_index])
 	_apply_recoil()
 	_attack_cooldown_left = data["cooldown"]
 	return true
@@ -206,12 +223,14 @@ func reload_current_weapon() -> void:
 			PISTOL_RELOAD_END,
 			0.08
 		)
+		_play_audio(_reload_audio_players[current_weapon_index])
 		_pistol_reload_active = true
 		_attack_cooldown_left = PISTOL_RELOAD_END - PISTOL_RELOAD_START
 		return
 
 	if not _play_animation(reload_animation, 0.1):
 		return
+	_play_audio(_reload_audio_players[current_weapon_index])
 
 	var player := _animation_players[current_weapon_index]
 	var animation := player.get_animation(reload_animation)
@@ -257,6 +276,18 @@ func _create_weapon(index: int) -> void:
 	if data["procedural_fire"] and animation_player:
 		animation_player.active = false
 	_animation_players.append(animation_player)
+	_fire_audio_players.append(_create_audio_player(
+		"FireAudio_%d" % (index + 1),
+		data["fire_sound"],
+		data["fire_volume_db"],
+		4
+	))
+	_reload_audio_players.append(_create_audio_player(
+		"ReloadAudio_%d" % (index + 1),
+		data["reload_sound"],
+		data["reload_volume_db"],
+		1
+	))
 	_configure_idle_loop(index, animation_player)
 	slot.visible = false
 
@@ -269,6 +300,27 @@ func _prepare_imported_scene(model: Node) -> void:
 		mesh.layers = 2
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mesh.extra_cull_margin = 100.0
+
+
+func _create_audio_player(
+	player_name: String,
+	stream: AudioStream,
+	volume_db: float,
+	max_polyphony: int
+) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.name = player_name
+	player.stream = stream
+	player.volume_db = volume_db
+	player.max_polyphony = max_polyphony
+	add_child(player)
+	return player
+
+
+func _play_audio(player: AudioStreamPlayer) -> void:
+	if player == null or player.stream == null:
+		return
+	player.play()
 
 
 func _update_viewmodel_motion(delta: float) -> void:

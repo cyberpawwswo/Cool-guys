@@ -24,6 +24,13 @@ func _run_test() -> void:
 	if manager.get_weapon_count() != 3:
 		_fail("Expected 3 weapons, got %d" % manager.get_weapon_count())
 		return
+	if manager._fire_audio_players.size() != 3 or manager._reload_audio_players.size() != 3:
+		_fail("Expected audio players for all 3 weapon slots")
+		return
+	for index in 2:
+		if manager._fire_audio_players[index].max_polyphony < 4:
+			_fail("Weapon %d fire sound cannot overlap" % index)
+			return
 
 	var expected_names := ["Boomstick", "Beretta", "Leg Kick"]
 	for index in manager.get_weapon_count():
@@ -34,9 +41,21 @@ func _run_test() -> void:
 		if not manager.play_attack():
 			_fail("Weapon %d has no playable attack animation" % index)
 			return
+		if index < 2 and not manager._fire_audio_players[index].playing:
+			_fail("Weapon %d fire sound did not play" % index)
+			return
+		if index == 2 and manager._fire_audio_players[index].stream != null:
+			_fail("Leg Kick unexpectedly has a fire sound")
+			return
 		if index == 1 and manager._animation_players[index].is_playing():
 			_fail("Beretta started the full reload animation after firing")
 			return
+
+	manager.select_weapon(0, true)
+	manager.reload_current_weapon()
+	if not manager._reload_audio_players[0].playing:
+		_fail("Boomstick shell reload sound did not play")
+		return
 
 	manager.select_weapon(1, true)
 	var pistol_slide: Node3D = manager._procedural_slides[1]
@@ -65,6 +84,9 @@ func _run_test() -> void:
 	for bone_index in pistol_skeleton.get_bone_count():
 		pistol_rest_pose.append(pistol_skeleton.get_bone_pose(bone_index))
 	manager.reload_current_weapon()
+	if not manager._reload_audio_players[1].playing:
+		_fail("Beretta reload sound did not play")
+		return
 	var pistol_player: AnimationPlayer = manager._animation_players[1]
 	if not pistol_player.active or not pistol_player.is_playing():
 		_fail("Beretta reload section did not start")
