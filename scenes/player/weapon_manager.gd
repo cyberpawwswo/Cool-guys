@@ -56,7 +56,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"idle_animation": StringName(),
 		"cooldown": 0.55,
 		"manual_scale": 1.3,
-		"manual_position": Vector3(0.03, -1.05, -0.9),
+		"manual_position": Vector3(0.03, -1.35, -0.9),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
 		"hide_when_idle": true,
 	},
