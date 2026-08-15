@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://0q5c2cdt3wwy"]
+
+[ext_resource type="Script" uid="uid://c3cldofo14df4" path="res://scenes/npc/llm_tests/llm_tests.gd" id="1_0tu42"]
+[ext_resource type="Script" uid="uid://u60p5csqubmn" path="res://scenes/npc/llm_tests/ai_controller.gd" id="2_0tu42"]
+
+[node name="AiControler" type="Node2D" unique_id=506541683]
+script = ExtResource("1_0tu42")
+
+[node name="AiController" type="Node" parent="." unique_id=1455406005]
+script = ExtResource("2_0tu42")
+system_prompt = "Ты ссм специолист. Поэтому когда с тобой здаровуються ты от вечаешь привет, у меня все хорошо. Даже если у тебя не спрашивали о тебе. Потому что это проявление креативности"
+metadata/_custom_type_script = "uid://u60p5csqubmn"

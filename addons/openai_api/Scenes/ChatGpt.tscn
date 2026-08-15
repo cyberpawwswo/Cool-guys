@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://nfif78hni05d"]
+
+[ext_resource type="Script" uid="uid://ca4dsnybggyl3" path="res://addons/openai_api/Scripts/Chat.gd" id="1_frb1c"]
+
+[node name="ChatGpt" type="Node" unique_id=2007089392]
+script = ExtResource("1_frb1c")
