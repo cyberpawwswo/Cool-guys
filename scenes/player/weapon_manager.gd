@@ -24,23 +24,6 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"manual_scale": 0.95,
 		"manual_position": Vector3(0.22, -0.58, -0.65),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
-		"use_imported_camera": false,
-		"view_offset": Vector3.ZERO,
-		"hide_when_idle": false,
-	},
-	{
-		"display_name": "Uzi",
-		"scene": preload("res://assets/weapons/uzi/source/1Matzh_Uzi_Animations.fbx"),
-		"attack_animations": [&"rig|Fire"],
-		"reload_animation": &"rig|Reload",
-		"equip_animation": &"rig|Equip",
-		"idle_animation": &"rig|Idle",
-		"cooldown": 0.12,
-		"manual_scale": 1.1,
-		"manual_position": Vector3.ZERO,
-		"rotation_degrees": Vector3.ZERO,
-		"use_imported_camera": true,
-		"view_offset": Vector3(0.12, -0.3, -0.5),
 		"hide_when_idle": false,
 	},
 	{
@@ -54,23 +37,6 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"manual_scale": 1.35,
 		"manual_position": Vector3(0.27, -0.5, -0.58),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
-		"use_imported_camera": false,
-		"view_offset": Vector3.ZERO,
-		"hide_when_idle": false,
-	},
-	{
-		"display_name": "AKS-74",
-		"scene": preload("res://assets/weapons/aks74/source/hands_aks74_stalker_soc.fbx"),
-		"attack_animations": [&"hud_skelet|Shot"],
-		"reload_animation": &"hud_skelet|Reload_f",
-		"equip_animation": StringName(),
-		"idle_animation": &"hud_skelet|Walk_001",
-		"cooldown": 0.14,
-		"manual_scale": 1.1,
-		"manual_position": Vector3.ZERO,
-		"rotation_degrees": Vector3.ZERO,
-		"use_imported_camera": true,
-		"view_offset": Vector3(0.15, -0.32, -0.62),
 		"hide_when_idle": false,
 	},
 	{
@@ -84,24 +50,7 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"manual_scale": 0.85,
 		"manual_position": Vector3(0.12, -0.55, -0.72),
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
-		"use_imported_camera": false,
-		"view_offset": Vector3.ZERO,
 		"hide_when_idle": true,
-	},
-	{
-		"display_name": "Remington",
-		"scene": preload("res://assets/weapons/remington/source/Arm_remington.fbx"),
-		"attack_animations": [&"Armature|SG_FPS_Shot"],
-		"reload_animation": &"Armature|SG_FPS_Reload",
-		"equip_animation": StringName(),
-		"idle_animation": &"Armature|SG_FPS_Idle",
-		"cooldown": 1.0,
-		"manual_scale": 0.72,
-		"manual_position": Vector3(0.14, -0.37, -0.72),
-		"rotation_degrees": Vector3.ZERO,
-		"use_imported_camera": false,
-		"view_offset": Vector3.ZERO,
-		"hide_when_idle": false,
 	},
 ]
 
@@ -249,12 +198,7 @@ func _create_weapon(index: int) -> void:
 	var weapon_scene: PackedScene = data["scene"]
 	var model := weapon_scene.instantiate()
 	pivot.add_child(model)
-	_apply_asset_fixes(index, model)
-	if data["use_imported_camera"]:
-		_align_to_imported_camera(pivot, model)
-		slot.position = data["view_offset"]
-	else:
-		slot.position = data["manual_position"]
+	slot.position = data["manual_position"]
 	slot.scale = Vector3.ONE * float(data["manual_scale"])
 	_prepare_imported_scene(model)
 
@@ -274,118 +218,6 @@ func _prepare_imported_scene(model: Node) -> void:
 		mesh.layers = 2
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mesh.extra_cull_margin = 100.0
-
-
-func _align_to_imported_camera(pivot: Node3D, model: Node) -> void:
-	var cameras := model.find_children("*", "Camera3D", true, false)
-	if cameras.is_empty():
-		return
-
-	var imported_camera := cameras[0] as Camera3D
-	var camera_in_pivot_space := pivot.global_transform.affine_inverse() * imported_camera.global_transform
-	pivot.transform = camera_in_pivot_space.affine_inverse()
-
-
-func _apply_asset_fixes(index: int, model: Node) -> void:
-	match index:
-		1:
-			_hide_node(model, "Aim")
-			_hide_node(model, "Background2")
-			_set_surface_material(model, "Mesh", 0, _create_material(
-				"res://assets/weapons/uzi/textures/Face_Basecolor.png",
-				"res://assets/weapons/uzi/textures/Face_Normal.png"
-			))
-			_set_surface_material(model, "Mesh", 1, _create_material(
-				"res://assets/weapons/uzi/textures/Cloths_BaseColor.1002.png",
-				"res://assets/weapons/uzi/textures/Cloths_Normal.1002.png",
-				"res://assets/weapons/uzi/textures/Cloths_Roughness.1002.png",
-				"res://assets/weapons/uzi/textures/Cloths_Metallic.1002.png"
-			))
-			_set_surface_material(model, "Mesh", 2, _create_material(
-				"res://assets/weapons/uzi/textures/Watch_BaseColor.1004.png",
-				"res://assets/weapons/uzi/textures/Watch_Normal.1004.png",
-				"res://assets/weapons/uzi/textures/Watch_Roughness.1004.png",
-				"res://assets/weapons/uzi/textures/Watch_Metallic.1004.png"
-			))
-			_set_surface_material(model, "Mesh", 3, _create_material(
-				"res://assets/weapons/uzi/textures/Watch_BaseColor.1004.png",
-				"res://assets/weapons/uzi/textures/Watch_Normal.1004.png",
-				"res://assets/weapons/uzi/textures/Watch_Roughness.1004.png",
-				"res://assets/weapons/uzi/textures/Watch_Metallic.1004.png"
-			))
-			_set_surface_material(model, "Mesh", 4, _create_material(
-				"res://assets/weapons/uzi/textures/Gloves_BaseColor.1003.png",
-				"res://assets/weapons/uzi/textures/Gloves_Normal.1003.png",
-				"res://assets/weapons/uzi/textures/Gloves_Roughness.1003.png",
-				"res://assets/weapons/uzi/textures/Gloves_Metallic.1003.png"
-			))
-			_set_surface_material(model, "UZI", 0, _create_material(
-				"res://assets/weapons/uzi/textures/UZI_Base_color.png",
-				"res://assets/weapons/uzi/textures/UZI_Normal_OpenGL.png",
-				"res://assets/weapons/uzi/textures/UZI_Roughness.png",
-				"res://assets/weapons/uzi/textures/UZI_Metallic.png"
-			))
-			_set_surface_material(model, "UZI", 1, _create_material(
-				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Base_color.png",
-				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Normal_OpenGL.png",
-				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Roughness.png",
-				"res://assets/weapons/uzi/textures/UZI_Magazine_and_Bullet_Metallic.png"
-			))
-		3:
-			_hide_node(model, "shape_hand_ik_l")
-			_hide_node(model, "shape_hand_ik_r")
-			var hands_material := _create_material(
-				"res://assets/weapons/aks74/textures/act_arm_perchatka.png"
-			)
-			var weapon_material := _create_material(
-				"res://assets/weapons/aks74/textures/wpn_ak74.png"
-			)
-			var attachment_material := StandardMaterial3D.new()
-			attachment_material.albedo_color = Color(0.12, 0.13, 0.14)
-			attachment_material.metallic = 0.65
-			attachment_material.roughness = 0.42
-			_set_surface_material(model, "hud_mesh", 0, hands_material)
-			_set_surface_material(model, "hud_mesh", 1, weapon_material)
-			for surface in range(2, 4):
-				_set_surface_material(model, "hud_mesh", surface, attachment_material)
-
-
-func _hide_node(model: Node, node_name: String) -> void:
-	var found := model.find_child(node_name, true, false) as Node3D
-	if found:
-		found.visible = false
-
-
-func _set_surface_material(
-	model: Node,
-	mesh_name: String,
-	surface: int,
-	material: StandardMaterial3D
-) -> void:
-	var mesh_instance := model.find_child(mesh_name, true, false) as MeshInstance3D
-	if mesh_instance == null or mesh_instance.mesh == null:
-		return
-	if surface < 0 or surface >= mesh_instance.mesh.get_surface_count():
-		return
-	mesh_instance.set_surface_override_material(surface, material)
-
-
-func _create_material(
-	albedo_path: String,
-	normal_path := "",
-	roughness_path := "",
-	metallic_path := ""
-) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_texture = load(albedo_path) as Texture2D
-	if not normal_path.is_empty():
-		material.normal_enabled = true
-		material.normal_texture = load(normal_path) as Texture2D
-	if not roughness_path.is_empty():
-		material.roughness_texture = load(roughness_path) as Texture2D
-	if not metallic_path.is_empty():
-		material.metallic_texture = load(metallic_path) as Texture2D
-	return material
 
 
 func _update_viewmodel_motion(delta: float) -> void:
@@ -469,9 +301,9 @@ func _update_viewmodel_motion(delta: float) -> void:
 
 func _apply_recoil() -> void:
 	var recoil_scale := 0.75
-	if current_weapon_index in [0, 5]:
+	if current_weapon_index == 0:
 		recoil_scale = 1.35
-	elif current_weapon_index in [1, 3]:
+	elif current_weapon_index == 1:
 		recoil_scale = 0.55
 	var side := -1.0 if _attack_variant % 2 == 0 else 1.0
 	_recoil_position += Vector3(side * 0.002, -0.003, 0.025) * recoil_scale
@@ -532,12 +364,6 @@ func _number_key_to_index(keycode: Key) -> int:
 			return 1
 		KEY_3:
 			return 2
-		KEY_4:
-			return 3
-		KEY_5:
-			return 4
-		KEY_6:
-			return 5
 	return -1
 
 

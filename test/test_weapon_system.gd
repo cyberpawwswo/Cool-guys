@@ -21,14 +21,15 @@ func _run_test() -> void:
 	if manager == null:
 		_fail("WeaponManager is missing")
 		return
-	if manager.get_weapon_count() != 6:
-		_fail("Expected 6 weapons, got %d" % manager.get_weapon_count())
+	if manager.get_weapon_count() != 3:
+		_fail("Expected 3 weapons, got %d" % manager.get_weapon_count())
 		return
 
+	var expected_names := ["Boomstick", "Beretta", "Leg Kick"]
 	for index in manager.get_weapon_count():
 		manager.select_weapon(index, true)
-		if manager.get_current_weapon_name().is_empty():
-			_fail("Weapon %d has no display name" % index)
+		if manager.get_current_weapon_name() != expected_names[index]:
+			_fail("Unexpected weapon in slot %d" % index)
 			return
 		if not manager.play_attack():
 			_fail("Weapon %d has no playable attack animation" % index)
@@ -42,7 +43,7 @@ func _run_test() -> void:
 		_fail("Mouse wheel input was not forwarded to the viewmodel")
 		return
 
-	print("WEAPON SYSTEM TEST PASSED: 6 weapons loaded and switched")
+	print("WEAPON SYSTEM TEST PASSED: 3 weapons loaded and switched")
 	quit(0)
 
 

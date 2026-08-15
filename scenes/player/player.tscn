@@ -118,7 +118,7 @@ theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.8)
 theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_font_sizes/font_size = 15
-text = "1–6 / колесо — оружие   R — перезарядка   F — удар головой"
+text = "1–3 / колесо — оружие   R — перезарядка   F — удар головой"
 horizontal_alignment = 2
 
 [node name="Node3D" type="Node3D" parent="." unique_id=508049726]
