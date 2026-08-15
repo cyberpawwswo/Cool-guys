@@ -5,8 +5,10 @@ extends Node
 @export var inner_material: StandardMaterial3D
 @export var sun: DirectionalLight3D
 @export var environment: Environment
+@export var bw_cutoff_hz := 700.0
 
 var _defaults: Dictionary = {}
+var _muffle_filter: AudioEffectFilter = null
 
 func _ready() -> void:
 	if floor_material:
@@ -29,9 +31,41 @@ func _ready() -> void:
 				_defaults["sky_horizon"] = sky_mat.sky_horizon_color
 				_defaults["ground_horizon"] = sky_mat.ground_horizon_color
 				_defaults["ground_bottom"] = sky_mat.ground_bottom_color
+	_setup_muffle_filter()
+
+
+func _setup_muffle_filter() -> void:
+	var master := AudioServer.get_bus_index("Master")
+	if master < 0:
+		return
+	for i in AudioServer.get_bus_effect_count(master):
+		var effect := AudioServer.get_bus_effect(master, i)
+		if effect is AudioEffectFilter and effect.resource_name == "BWMuffle":
+			_muffle_filter = effect
+			AudioServer.remove_bus_effect(master, i)
+			return
+	_muffle_filter = AudioEffectFilter.new()
+	_muffle_filter.resource_name = "BWMuffle"
+	_muffle_filter.cutoff_hz = bw_cutoff_hz
+
+
+func _apply_muffle(active: bool) -> void:
+	if _muffle_filter == null:
+		return
+	var master := AudioServer.get_bus_index("Master")
+	if master < 0:
+		return
+	for i in AudioServer.get_bus_effect_count(master):
+		if AudioServer.get_bus_effect(master, i) == _muffle_filter:
+			if not active:
+				AudioServer.remove_bus_effect(master, i)
+			return
+	if active:
+		AudioServer.add_bus_effect(master, _muffle_filter)
 
 
 func set_dark_mode(dark: bool) -> void:
+	_apply_muffle(dark)
 	if floor_material:
 		floor_material.albedo_color = Color(0.03, 0.03, 0.03, 1) if dark else _defaults.get("floor", Color.WHITE)
 	if wall_material:

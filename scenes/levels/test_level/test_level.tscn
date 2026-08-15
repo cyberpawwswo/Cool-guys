@@ -19,8 +19,8 @@ roughness = 0.5
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_kc65l"]
 sky_top_color = Color(0.4, 0.45, 0.55, 1)
 sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
-ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
 ground_bottom_color = Color(0.2, 0.17, 0.13, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
 
 [sub_resource type="Sky" id="Sky_62kbb"]
 sky_material = SubResource("ProceduralSkyMaterial_kc65l")
@@ -29,7 +29,7 @@ sky_material = SubResource("ProceduralSkyMaterial_kc65l")
 background_mode = 2
 sky = SubResource("Sky_62kbb")
 ambient_light_source = 2
-ambient_light_energy = 1.0
+ambient_light_color = Color(0.08, 0.08, 0.1, 1)
 
 [sub_resource type="Resource" id="Resource_6eemo"]
 script = ExtResource("2_lbjl6")
@@ -78,7 +78,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 shape = SubResource("ConcavePolygonShape3D_qv4mi")
 
 [node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=1250180117 groups=["destruction"]]
-transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, 19.469646, 0, -11.483986)
+transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, 19.469646, -6.9273033, -11.483986)
 mesh = SubResource("BoxMesh_0x52n")
 surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 
@@ -88,7 +88,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 shape = SubResource("ConcavePolygonShape3D_qv4mi")
 
 [node name="MeshInstance3D3" type="MeshInstance3D" parent="." unique_id=987858722 groups=["destruction"]]
-transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, -25.195736, 0, -11.483986)
+transform = Transform3D(0, -1.0000001, 0, 1.0000001, 0, 0, 0, 0, 1, -25.195736, -7.170868, -11.483986)
 mesh = SubResource("BoxMesh_0x52n")
 surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 
@@ -98,7 +98,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 shape = SubResource("ConcavePolygonShape3D_qv4mi")
 
 [node name="MeshInstance3D4" type="MeshInstance3D" parent="." unique_id=413179552 groups=["destruction"]]
-transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -8.589035, 0, 16.471897)
+transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -8.589035, -8.438934, 16.471897)
 mesh = SubResource("BoxMesh_0x52n")
 surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 
@@ -108,7 +108,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 shape = SubResource("ConcavePolygonShape3D_qv4mi")
 
 [node name="MeshInstance3D5" type="MeshInstance3D" parent="." unique_id=1320545545 groups=["destruction"]]
-transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -8.589035, 0, -40.23381)
+transform = Transform3D(0, 4.3711392e-08, 1, 1.0000001, 0, 0, 0, 1.0000001, -4.371139e-08, -8.589035, -7, -40.23381)
 mesh = SubResource("BoxMesh_0x52n")
 surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 
