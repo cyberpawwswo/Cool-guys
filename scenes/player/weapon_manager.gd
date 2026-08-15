@@ -28,9 +28,9 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"fire_volume_db": 2.0,
 		"reload_volume_db": -3.0,
 		"shot_effect_strength": 1.0,
-		"muzzle_position": Vector3(-0.1, -0.06, -0.98),
+		"muzzle_position": Vector3(0.16, -0.29, -1.18),
 		"muzzle_size": 0.27,
-		"muzzle_duration": 0.11,
+		"muzzle_duration": 0.16,
 		"muzzle_light_energy": 18.0,
 		"fire_pitch_range": Vector2(0.94, 1.02),
 		"fire_tail_pitch": 0.72,
@@ -264,15 +264,18 @@ func play_attack() -> bool:
 	var data := WEAPON_DATA[current_weapon_index]
 	if data["uses_ammo"] and _ammo_in_magazine[current_weapon_index] <= 0:
 		return false
-	if data["procedural_fire"]:
+	if data["procedural_fire"] or current_weapon_index == 0:
 		_attack_variant += 1
 		_weapon_models[current_weapon_index].visible = true
-		_play_procedural_fire()
+		if data["procedural_fire"]:
+			_play_procedural_fire()
+		else:
+			_set_shotgun_ready_pose()
 		_play_fire_audio()
 		_trigger_muzzle_flash(current_weapon_index)
 		_consume_round()
 		_apply_recoil()
-		_attack_cooldown_left = 0.0
+		_attack_cooldown_left = float(data["cooldown"])
 		return true
 
 	var attack_animations: Array = data["attack_animations"]
@@ -288,7 +291,7 @@ func play_attack() -> bool:
 	_trigger_muzzle_flash(current_weapon_index)
 	_consume_round()
 	_apply_recoil()
-	_attack_cooldown_left = 0.0
+	_attack_cooldown_left = float(data["cooldown"])
 	return true
 
 
@@ -325,6 +328,8 @@ func reload_current_weapon() -> void:
 		_attack_cooldown_left = (PISTOL_RELOAD_END - PISTOL_RELOAD_START) / _reload_speed_multiplier
 		return
 
+	if current_weapon_index == 0:
+		_set_shotgun_ready_pose()
 	if not _play_animation(reload_animation, 0.1):
 		return
 	_play_audio(_reload_audio_players[current_weapon_index])
@@ -391,6 +396,8 @@ func _finish_reload() -> void:
 		var player := _animation_players[weapon_index]
 		if player:
 			player.speed_scale = 1.0
+		if weapon_index == 0:
+			_set_shotgun_ready_pose()
 	if weapon_index < 0 or reload_amount <= 0:
 		return
 
@@ -414,6 +421,8 @@ func _cancel_reload() -> void:
 		var player := _animation_players[weapon_index]
 		if player:
 			player.speed_scale = 1.0
+		if weapon_index == 0:
+			_set_shotgun_ready_pose()
 
 
 func _emit_ammo_changed(weapon_index: int) -> void:
@@ -622,16 +631,10 @@ func _create_muzzle_anchor(
 ) -> Node3D:
 	var anchor: Node3D
 	if index == 0:
-		var skeletons := model.find_children("*", "Skeleton3D", true, false)
-		var skeleton := skeletons[0] as Skeleton3D
-		var bone_attachment := BoneAttachment3D.new()
-		bone_attachment.name = "BoomstickMuzzleAnchor"
-		bone_attachment.bone_name = &"weapon"
-		skeleton.add_child(bone_attachment)
-		var muzzle_offset := Node3D.new()
-		muzzle_offset.name = "MuzzleOffset"
-		bone_attachment.add_child(muzzle_offset)
-		anchor = muzzle_offset
+		var shotgun_anchor := Node3D.new()
+		shotgun_anchor.name = "BoomstickMuzzleAnchor"
+		model.add_child(shotgun_anchor)
+		anchor = shotgun_anchor
 	else:
 		var pistol := model.find_child("pistol", true, false) as Node3D
 		var pistol_anchor := Node3D.new()
@@ -681,12 +684,12 @@ func _create_spark_particles(index: int, flash_size: float) -> CPUParticles3D:
 	particles.one_shot = true
 	particles.explosiveness = 1.0
 	particles.randomness = 0.35
-	particles.local_coords = false
+	particles.local_coords = true
 	particles.direction = Vector3(0.0, 0.0, -1.0)
-	particles.spread = 52.0
+	particles.spread = 46.0
 	particles.gravity = Vector3(0.0, -2.4, 0.0)
-	particles.initial_velocity_min = 1.2
-	particles.initial_velocity_max = 3.2 if index == 0 else 2.3
+	particles.initial_velocity_min = 0.55
+	particles.initial_velocity_max = 1.65 if index == 0 else 1.35
 	particles.scale_amount_min = 0.55
 	particles.scale_amount_max = 1.2
 	particles.angle_min = -35.0
@@ -710,12 +713,12 @@ func _create_gas_particles(index: int, flash_size: float) -> CPUParticles3D:
 	particles.one_shot = true
 	particles.explosiveness = 1.0
 	particles.randomness = 0.42
-	particles.local_coords = false
+	particles.local_coords = true
 	particles.direction = Vector3(0.0, 0.05, -1.0).normalized()
 	particles.spread = 30.0
 	particles.gravity = Vector3.ZERO
-	particles.initial_velocity_min = 0.5
-	particles.initial_velocity_max = 1.45 if index == 0 else 0.95
+	particles.initial_velocity_min = 0.25
+	particles.initial_velocity_max = 0.78 if index == 0 else 0.62
 	particles.scale_amount_min = 0.45
 	particles.scale_amount_max = 1.25
 	var gas_scale_curve := Curve.new()
@@ -925,6 +928,18 @@ func _reset_procedural_animation(index: int) -> void:
 	player.stop(true)
 	player.active = false
 	_pistol_reload_active = false
+
+
+func _set_shotgun_ready_pose() -> void:
+	var player := _animation_players[0]
+	var equip_animation: StringName = WEAPON_DATA[0]["equip_animation"]
+	if player == null or not player.has_animation(equip_animation):
+		return
+	player.active = true
+	player.speed_scale = 1.0
+	player.play(equip_animation)
+	player.seek(player.get_animation(equip_animation).length, true)
+	player.stop(true)
 
 
 func _update_procedural_slide(delta: float) -> void:
