@@ -1,9 +1,11 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/maps/office/OfficeMap.FBX" id="1_office"]
 [ext_resource type="PackedScene" path="res://scenes/levels/office/office_collision.scn" id="2_collision"]
+[ext_resource type="Script" path="res://scenes/levels/office/office_map.gd" id="3_script"]
 
 [node name="OfficeMap" type="Node3D"]
+script = ExtResource("3_script")
 
 [node name="Model" parent="." instance=ExtResource("1_office")]
 
