@@ -11,8 +11,6 @@ const SAVE_DESTRACTION_FOLDER := "res://resource/destoy/scenes/"
 
 var destroy_server: VoronoiShatter
 
-var _mesh_material := Material.new()
-
 @export var seed_saved: int
 @export var setting := DestroySettings.new() 
 @export var life_time := 20.0
