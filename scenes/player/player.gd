@@ -1,5 +1,9 @@
 extends CharacterBody3D
 
+var _step_sound := preload("res://assets/audio/player/steps.mp3")
+var _run_sound := preload("res://assets/audio/player/ran.mp3")
+var _dash_sound := preload("res://assets/audio/player/sleash.mp3")
+var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 
 @export_category("Movement")
 @export var walk_speed := 5.0
@@ -47,9 +51,19 @@ extends CharacterBody3D
 @export var headbutt_tilt_degrees := 18.0
 
 @export_category("Black & White")
-@export var blink_interval := 1.0
+@export var blink_interval := 2.5
 @export var blink_strength := 0.45
-@export var blink_fade_speed := 3.5
+@export var blink_fade_speed := 1.8
+@export var bw_speed_multiplier := 1.35
+@export var bw_dash_speed := 24.0
+@export var bw_dash_duration := 0.3
+@export var bw_reload_speed_multiplier := 1.6
+
+@export_category("Audio")
+@export var footstep_volume_db := 0.0
+@export var run_volume_db := 0.0
+@export var dash_volume_db := 0.0
+@export var headbutt_volume_db := 0.0
 
 @onready var camera: Camera3D = $Camera3D
 @onready var ray: RayCast3D = $Camera3D/RayCast3D
@@ -94,6 +108,11 @@ var _black_white_mode := false
 var _blink_timer := 0.0
 var _blink_alpha := 0.0
 
+var _step_player: AudioStreamPlayer
+var _run_player: AudioStreamPlayer
+var _dash_player: AudioStreamPlayer
+var _headbutt_player: AudioStreamPlayer
+
 
 func _ready() -> void:
 	_camera_start_position = camera.position
@@ -105,6 +124,12 @@ func _ready() -> void:
 	blink_overlay.color.a = 0.0
 	shot_flash.color.a = 0.0
 	pause_menu_bw.visible = false
+	_step_sound.loop = true
+	_run_sound.loop = true
+	_step_player = _create_audio_player("StepSound", _step_sound, footstep_volume_db)
+	_run_player = _create_audio_player("RunSound", _run_sound, run_volume_db)
+	_dash_player = _create_audio_player("DashSound", _dash_sound, dash_volume_db)
+	_headbutt_player = _create_audio_player("HeadbuttSound", _headbutt_sound, headbutt_volume_db)
 
 
 func _input(event: InputEvent) -> void:
@@ -143,6 +168,10 @@ func _toggle_black_white_mode() -> void:
 	if not _black_white_mode:
 		_blink_alpha = 0.0
 		blink_overlay.color.a = 0.0
+	weapon_manager.set_reload_speed(
+		bw_reload_speed_multiplier if _black_white_mode else 1.0
+	)
+	weapon_manager.set_black_white_mode(_black_white_mode)
 	var level := get_tree().current_scene
 	if level:
 		var dark_mode := level.get_node_or_null("DarkMode")
@@ -186,8 +215,9 @@ func _physics_process(delta: float) -> void:
 		_start_dash(move_direction)
 
 	if _dash_time_left > 0.0:
-		velocity.x = _dash_direction.x * dash_speed
-		velocity.z = _dash_direction.z * dash_speed
+		var current_dash_speed := bw_dash_speed if _black_white_mode else dash_speed
+		velocity.x = _dash_direction.x * current_dash_speed
+		velocity.z = _dash_direction.z * current_dash_speed
 	else:
 		_update_horizontal_velocity(move_direction, delta)
 
@@ -197,6 +227,7 @@ func _physics_process(delta: float) -> void:
 	if not _was_on_floor and is_on_floor():
 		_landing_kick = clampf(absf(vertical_speed_before_move) * 0.012, 0.0, 0.085)
 	_was_on_floor = is_on_floor()
+	_update_footstep_sounds(delta)
 
 
 func _process(delta: float) -> void:
@@ -233,6 +264,10 @@ func apply_weapon_recoil(strength: float) -> void:
 
 
 func _update_shot_flash(delta: float) -> void:
+	if _black_white_mode:
+		_shot_flash_alpha = 0.0
+		shot_flash.color.a = 0.0
+		return
 	_shot_flash_alpha = maxf(_shot_flash_alpha - delta * 2.8, 0.0)
 	shot_flash.color = Color(
 		1.0,
@@ -268,6 +303,51 @@ func _update_floor_assistance(delta: float) -> void:
 		_coyote_time_left = 0.0
 
 
+func _create_audio_player(
+	player_name: String,
+	stream: AudioStream,
+	volume_db: float
+) -> AudioStreamPlayer:
+	var player := AudioStreamPlayer.new()
+	player.name = player_name
+	player.stream = stream
+	player.volume_db = volume_db
+	add_child(player)
+	return player
+
+
+func _update_footstep_sounds(_delta: float) -> void:
+	var moving_on_floor := (
+		is_on_floor()
+		and _dash_time_left <= 0.0
+		and Vector2(velocity.x, velocity.z).length() > 0.5
+	)
+	if moving_on_floor:
+		var is_sprinting := (
+			_black_white_mode
+			or (Input.is_action_pressed("sprint") and _move_input.y < 0.0)
+		)
+		if is_sprinting:
+			if _run_player and not _run_player.playing:
+				_run_player.play()
+			if _step_player and _step_player.playing:
+				_step_player.stop()
+		else:
+			if _step_player and not _step_player.playing:
+				_step_player.play()
+			if _run_player and _run_player.playing:
+				_run_player.stop()
+	else:
+		_stop_footstep_sounds()
+
+
+func _stop_footstep_sounds() -> void:
+	if _step_player:
+		_step_player.stop()
+	if _run_player:
+		_run_player.stop()
+
+
 func _start_dash(move_direction: Vector3) -> void:
 	_dash_direction = move_direction
 	if _dash_direction == Vector3.ZERO:
@@ -275,12 +355,18 @@ func _start_dash(move_direction: Vector3) -> void:
 
 	_dash_direction.y = 0.0
 	_dash_direction = _dash_direction.normalized()
-	_dash_time_left = dash_duration
+	_dash_time_left = bw_dash_duration if _black_white_mode else dash_duration
 	_dash_cooldown_left = dash_cooldown
+	if _dash_player:
+		_dash_player.play()
 
 
 func _update_horizontal_velocity(move_direction: Vector3, delta: float) -> void:
-	var target_speed := sprint_speed if Input.is_action_pressed("sprint") else walk_speed
+	var target_speed: float
+	if _black_white_mode:
+		target_speed = sprint_speed * bw_speed_multiplier
+	else:
+		target_speed = sprint_speed if Input.is_action_pressed("sprint") else walk_speed
 	var target_velocity := move_direction * target_speed
 	var current_horizontal := Vector3(velocity.x, 0.0, velocity.z)
 	var acceleration := ground_acceleration
@@ -355,7 +441,8 @@ func _update_headbutt(delta: float) -> Vector3:
 	var progress := clampf(_headbutt_time / headbutt_duration, 0.0, 1.0)
 
 	if not _headbutt_has_hit and progress >= 0.52:
-		_perform_attack(true)
+		if _perform_attack(true, _black_white_mode) and _headbutt_player:
+			_headbutt_player.play()
 		_headbutt_has_hit = true
 
 	var height_offset := 0.0
@@ -389,31 +476,32 @@ func _update_headbutt(delta: float) -> Vector3:
 	return Vector3(height_offset, forward_offset, pitch_offset)
 
 
-func _perform_attack(close_only := false) -> void:
+func _perform_attack(close_only := false, use_close_power := true) -> bool:
+	var power_multiplier := close_multiplier if use_close_power else 1.0
 	if _held_body != null:
 		var thrown := _held_body
 		_held_body = null
-		var throw_impulse := _throw_direction * impulse * close_multiplier
+		var throw_impulse := _throw_direction * impulse * power_multiplier
 		var horizontal_amount := 1.0 - absf(_throw_direction.y)
 		throw_impulse.y += thrown.mass * headbutt_upward_velocity * horizontal_amount
 		thrown.apply_central_impulse(throw_impulse)
 		if "hp" in thrown:
 			thrown.hp = 0
-		return
+		return true
 
 	if not ray.is_colliding():
-		return
+		return false
 
 	var body := ray.get_collider()
 	if body == null:
-		return
+		return false
 
 	var hit_point := ray.get_collision_point()
 	var distance_to_hit := global_position.distance_to(hit_point)
 	if close_only and distance_to_hit > close_distance:
-		return
+		return false
 	var attack_power := impulse
-	if distance_to_hit <= close_distance:
+	if use_close_power and distance_to_hit <= close_distance:
 		attack_power *= close_multiplier
 
 	var hit_direction := hit_point - global_position
@@ -430,6 +518,7 @@ func _perform_attack(close_only := false) -> void:
 
 	if "hp" in body:
 		body.hp = 0
+	return true
 
 
 func _update_camera(delta: float, headbutt_pose: Vector3) -> void:

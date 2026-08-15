@@ -8,6 +8,7 @@ const PISTOL_SLIDE_DURATION := 0.12
 const PISTOL_SLIDE_DISTANCE := 0.035
 const PISTOL_RELOAD_START := 0.6333333
 const PISTOL_RELOAD_END := 1.9333333
+const SHOTGUN_RELOAD_DELAY := 0.2
 
 @export_category("Viewmodel Motion")
 @export var motion_smoothing := 19.0
@@ -135,6 +136,9 @@ var _equip_amount := 0.0
 var _sprint_amount := 0.0
 var _recoil_position := Vector3.ZERO
 var _recoil_rotation := Vector3.ZERO
+var _shotgun_reload_delay := -1.0
+var _reload_speed_multiplier := 1.0
+var _black_white_mode := false
 
 
 func _ready() -> void:
@@ -147,6 +151,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_attack_cooldown_left = maxf(_attack_cooldown_left - delta, 0.0)
+	if _shotgun_reload_delay > 0.0:
+		_shotgun_reload_delay -= delta
+		if _shotgun_reload_delay <= 0.0:
+			_play_audio(_reload_audio_players[0])
 	_update_procedural_slide(delta)
 	_update_muzzle_flashes(delta)
 	_update_viewmodel_motion(delta)
@@ -239,11 +247,11 @@ func play_attack() -> bool:
 		_attack_variant += 1
 		_weapon_models[current_weapon_index].visible = true
 		_play_procedural_fire()
-		_play_audio(_fire_audio_players[current_weapon_index])
+		_play_fire_audio()
 		_trigger_muzzle_flash(current_weapon_index)
 		_consume_round()
 		_apply_recoil()
-		_attack_cooldown_left = data["cooldown"]
+		_attack_cooldown_left = 0.0
 		return true
 
 	var attack_animations: Array = data["attack_animations"]
@@ -255,11 +263,11 @@ func play_attack() -> bool:
 	_weapon_models[current_weapon_index].visible = true
 	if not _play_animation(animation_name, 0.04):
 		return false
-	_play_audio(_fire_audio_players[current_weapon_index])
+	_play_fire_audio()
 	_trigger_muzzle_flash(current_weapon_index)
 	_consume_round()
 	_apply_recoil()
-	_attack_cooldown_left = data["cooldown"]
+	_attack_cooldown_left = 0.0
 	return true
 
 
@@ -283,6 +291,7 @@ func reload_current_weapon() -> void:
 		if pistol_player == null or not pistol_player.has_animation(reload_animation):
 			return
 		pistol_player.active = true
+		pistol_player.speed_scale = _reload_speed_multiplier
 		pistol_player.play_section(
 			reload_animation,
 			PISTOL_RELOAD_START,
@@ -292,7 +301,7 @@ func reload_current_weapon() -> void:
 		_play_audio(_reload_audio_players[current_weapon_index])
 		_pistol_reload_active = true
 		_begin_reload(reload_amount)
-		_attack_cooldown_left = PISTOL_RELOAD_END - PISTOL_RELOAD_START
+		_attack_cooldown_left = (PISTOL_RELOAD_END - PISTOL_RELOAD_START) / _reload_speed_multiplier
 		return
 
 	if not _play_animation(reload_animation, 0.1):
@@ -301,8 +310,9 @@ func reload_current_weapon() -> void:
 	_begin_reload(reload_amount)
 
 	var player := _animation_players[current_weapon_index]
+	player.speed_scale = _reload_speed_multiplier
 	var animation := player.get_animation(reload_animation)
-	_attack_cooldown_left = animation.length
+	_attack_cooldown_left = animation.length / _reload_speed_multiplier
 
 
 func get_weapon_count() -> int:
@@ -342,12 +352,24 @@ func _begin_reload(amount: int) -> void:
 	_pending_reload_amount = amount
 
 
+func set_reload_speed(multiplier: float) -> void:
+	_reload_speed_multiplier = maxf(multiplier, 0.1)
+
+
+func set_black_white_mode(enabled: bool) -> void:
+	_black_white_mode = enabled
+
+
 func _finish_reload() -> void:
 	var weapon_index := _reload_weapon_index
 	var reload_amount := _pending_reload_amount
 	_reload_active = false
 	_reload_weapon_index = -1
 	_pending_reload_amount = 0
+	if weapon_index >= 0:
+		var player := _animation_players[weapon_index]
+		if player:
+			player.speed_scale = 1.0
 	if weapon_index < 0 or reload_amount <= 0:
 		return
 
@@ -368,6 +390,9 @@ func _cancel_reload() -> void:
 	_pending_reload_amount = 0
 	if weapon_index >= 0:
 		_reload_audio_players[weapon_index].stop()
+		var player := _animation_players[weapon_index]
+		if player:
+			player.speed_scale = 1.0
 
 
 func _emit_ammo_changed(weapon_index: int) -> void:
@@ -455,6 +480,12 @@ func _play_audio(player: AudioStreamPlayer) -> void:
 	if player == null or player.stream == null:
 		return
 	player.play()
+
+
+func _play_fire_audio() -> void:
+	_play_audio(_fire_audio_players[current_weapon_index])
+	if WEAPON_DATA[current_weapon_index]["display_name"] == "Boomstick":
+		_shotgun_reload_delay = SHOTGUN_RELOAD_DELAY
 
 
 func _create_muzzle_flash(index: int, data: Dictionary, model: Node3D) -> void:
@@ -644,6 +675,8 @@ void fragment() {
 
 
 func _trigger_muzzle_flash(index: int) -> void:
+	if _black_white_mode:
+		return
 	var flash_root := _muzzle_flash_roots[index]
 	if flash_root == null:
 		return

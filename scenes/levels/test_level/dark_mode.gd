@@ -13,10 +13,13 @@ var _muffle_filter: AudioEffectFilter = null
 func _ready() -> void:
 	if floor_material:
 		_defaults["floor"] = floor_material.albedo_color
+		_defaults["floor_specular"] = floor_material.metallic_specular
 	if wall_material:
 		_defaults["wall"] = wall_material.albedo_color
+		_defaults["wall_specular"] = wall_material.metallic_specular
 	if inner_material:
 		_defaults["inner"] = inner_material.albedo_color
+		_defaults["inner_specular"] = inner_material.metallic_specular
 	if sun:
 		_defaults["light"] = sun.light_energy
 	if environment:
@@ -68,10 +71,13 @@ func set_dark_mode(dark: bool) -> void:
 	_apply_muffle(dark)
 	if floor_material:
 		floor_material.albedo_color = Color(0.03, 0.03, 0.03, 1) if dark else _defaults.get("floor", Color.WHITE)
+		floor_material.metallic_specular = 0.0 if dark else _defaults.get("floor_specular", 0.5)
 	if wall_material:
 		wall_material.albedo_color = Color(0.03, 0.03, 0.03, 1) if dark else _defaults.get("wall", Color.WHITE)
+		wall_material.metallic_specular = 0.0 if dark else _defaults.get("wall_specular", 0.5)
 	if inner_material:
 		inner_material.albedo_color = Color(0.02, 0.02, 0.02, 1) if dark else _defaults.get("inner", Color.WHITE)
+		inner_material.metallic_specular = 0.0 if dark else _defaults.get("inner_specular", 0.5)
 	if sun:
 		sun.light_energy = 0.45 if dark else _defaults.get("light", 1.0)
 	if environment:
