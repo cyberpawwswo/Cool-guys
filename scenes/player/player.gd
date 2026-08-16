@@ -21,6 +21,22 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var dash_cooldown := 0.8
 @export var dash_fov_boost := 7.0
 
+@export_category("Web Shooter")
+@export var web_range := 95.0
+@export var web_min_anchor_height := 2.0
+@export var web_rope_slack := 0.92
+@export var web_min_rope_length := 3.5
+@export var web_tension := 18.0
+@export var web_spring_strength := 11.0
+@export var web_steer_acceleration := 16.0
+@export var web_forward_assist := 9.0
+@export var web_attach_pull := 4.0
+@export var web_release_boost := 5.5
+@export var web_max_speed := 38.0
+@export var web_air_drag := 0.035
+@export var web_camera_roll_degrees := 5.0
+@export var web_fov_boost := 9.0
+
 @export_category("Camera")
 @export var mouse_sensitivity := 0.005
 @export var camera_smoothing := 14.0
@@ -73,6 +89,7 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @onready var shot_flash: ColorRect = $Effects/ShotFlash
 @onready var pause_menu: Control = $PauseMenus/PauseMenu
 @onready var pause_menu_bw: Control = $PauseMenus/PauseMenuBW
+@onready var crosshair: ColorRect = $Control/ColorRect
 
 var _camera_start_position := Vector3.ZERO
 var _camera_start_fov := 75.0
@@ -100,6 +117,16 @@ var _dash_cooldown_left := 0.0
 var _dash_direction := Vector3.ZERO
 var _coyote_time_left := 0.0
 var _jump_buffer_left := 0.0
+
+var _web_active := false
+var _web_anchor := Vector3.ZERO
+var _web_anchor_body: Node3D = null
+var _web_anchor_local := Vector3.ZERO
+var _web_rope_length := 0.0
+var _web_hand_side := 1.0
+var _web_line: MeshInstance3D
+var _web_anchor_marker: MeshInstance3D
+var _web_audio_player: AudioStreamPlayer
 
 var _headbutt_time := -1.0
 var _headbutt_cooldown_left := 0.0
@@ -135,6 +162,7 @@ func _ready() -> void:
 	_run_player = _create_audio_player("RunSound", _run_sound, run_volume_db)
 	_dash_player = _create_audio_player("DashSound", _dash_sound, dash_volume_db)
 	_headbutt_player = _create_audio_player("HeadbuttSound", _headbutt_sound, headbutt_volume_db)
+	_create_web_shooter()
 
 
 func _input(event: InputEvent) -> void:
@@ -215,11 +243,14 @@ func _physics_process(delta: float) -> void:
 	var move_direction := (
 		transform.basis * Vector3(_move_input.x, 0.0, _move_input.y)
 	).normalized()
+	_handle_web_input()
 
-	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0:
+	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0 and not _web_active:
 		_start_dash(move_direction)
 
-	if _dash_time_left > 0.0:
+	if _web_active:
+		_update_web_swing(move_direction, delta)
+	elif _dash_time_left > 0.0:
 		var current_dash_speed := bw_dash_speed if _black_white_mode else dash_speed
 		velocity.x = _dash_direction.x * current_dash_speed
 		velocity.z = _dash_direction.z * current_dash_speed
@@ -233,6 +264,7 @@ func _physics_process(delta: float) -> void:
 		_landing_kick = clampf(absf(vertical_speed_before_move) * 0.012, 0.0, 0.085)
 	_was_on_floor = is_on_floor()
 	_update_footstep_sounds(delta)
+	_update_web_visual()
 
 
 func _process(delta: float) -> void:
@@ -351,6 +383,261 @@ func _update_floor_assistance(delta: float) -> void:
 		velocity.y = jump_velocity
 		_jump_buffer_left = 0.0
 		_coyote_time_left = 0.0
+
+
+func _create_web_shooter() -> void:
+	var web_material := StandardMaterial3D.new()
+	web_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	web_material.albedo_color = Color(0.82, 0.95, 1.0, 1.0)
+	web_material.emission_enabled = true
+	web_material.emission = Color(0.28, 0.66, 1.0)
+	web_material.emission_energy_multiplier = 1.8
+
+	var line_mesh := CylinderMesh.new()
+	line_mesh.top_radius = 0.028
+	line_mesh.bottom_radius = 0.028
+	line_mesh.height = 1.0
+	line_mesh.radial_segments = 8
+	line_mesh.material = web_material
+	_web_line = MeshInstance3D.new()
+	_web_line.name = "WebLine"
+	_web_line.mesh = line_mesh
+	_web_line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_web_line.visible = false
+	add_child(_web_line)
+	_web_line.top_level = true
+
+	var marker_mesh := SphereMesh.new()
+	marker_mesh.radius = 0.11
+	marker_mesh.height = 0.22
+	marker_mesh.material = web_material
+	_web_anchor_marker = MeshInstance3D.new()
+	_web_anchor_marker.name = "WebAnchor"
+	_web_anchor_marker.mesh = marker_mesh
+	_web_anchor_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_web_anchor_marker.visible = false
+	add_child(_web_anchor_marker)
+	_web_anchor_marker.top_level = true
+
+	_web_audio_player = AudioStreamPlayer.new()
+	_web_audio_player.name = "WebShooterSound"
+	_web_audio_player.stream = _create_web_sound()
+	_web_audio_player.volume_db = -4.0
+	add_child(_web_audio_player)
+
+
+func _create_web_sound() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var sample_count := int(stream.mix_rate * 0.14)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+	var phase := 0.0
+	for sample_index in sample_count:
+		var progress := float(sample_index) / float(sample_count)
+		var frequency := lerpf(920.0, 210.0, progress)
+		phase += TAU * frequency / float(stream.mix_rate)
+		var envelope := sin(PI * progress) * (1.0 - progress * 0.45)
+		var noise := randf_range(-0.13, 0.13) * (1.0 - progress)
+		var value := clampf((sin(phase) * 0.72 + noise) * envelope, -1.0, 1.0)
+		data.encode_s16(sample_index * 2, int(value * 19000.0))
+	stream.data = data
+	return stream
+
+
+func _handle_web_input() -> void:
+	if Input.is_action_just_pressed("web_swing"):
+		var hit := _find_web_anchor()
+		if not hit.is_empty():
+			_attach_web(hit)
+		else:
+			crosshair.color = Color(1.0, 0.28, 0.22, 0.9)
+	if not _web_active:
+		crosshair.color = crosshair.color.lerp(
+			Color(1.0, 1.0, 1.0, 0.6235),
+			0.18
+		)
+		return
+	if Input.is_action_just_pressed("jump"):
+		_release_web(true)
+	elif Input.is_action_just_released("web_swing"):
+		_release_web(false)
+
+
+func _find_web_anchor() -> Dictionary:
+	var origin := camera.global_position
+	var forward := -camera.global_transform.basis.z
+	var up := camera.global_transform.basis.y
+	var right := camera.global_transform.basis.x
+	var directions: Array[Vector3] = [
+		forward,
+		(forward + up * 0.2).normalized(),
+		(forward + up * 0.38).normalized(),
+		(forward - right * 0.24 + up * 0.22).normalized(),
+		(forward + right * 0.24 + up * 0.22).normalized(),
+		(forward - right * 0.42 + up * 0.3).normalized(),
+		(forward + right * 0.42 + up * 0.3).normalized(),
+		(forward - right * 0.72 + up * 0.26).normalized(),
+		(forward + right * 0.72 + up * 0.26).normalized(),
+	]
+	var space_state := get_world_3d().direct_space_state
+	var best_hit: Dictionary = {}
+	var best_score := -INF
+	for direction in directions:
+		var query := PhysicsRayQueryParameters3D.create(
+			origin,
+			origin + direction * web_range
+		)
+		query.exclude = [get_rid()]
+		query.collide_with_areas = false
+		var hit := space_state.intersect_ray(query)
+		if hit.is_empty():
+			continue
+		if not hit.collider is StaticBody3D:
+			continue
+		var point: Vector3 = hit.position
+		var height := point.y - global_position.y
+		if height < web_min_anchor_height:
+			continue
+		var distance := origin.distance_to(point)
+		var score := (
+			height / web_range * 2.4
+			+ direction.dot(forward) * 2.0
+			- distance / web_range * 0.35
+		)
+		if score > best_score:
+			best_score = score
+			best_hit = hit
+	return best_hit
+
+
+func _attach_web(hit: Dictionary) -> void:
+	_web_anchor = hit.position
+	_web_anchor_body = hit.collider as Node3D
+	if _web_anchor_body:
+		_web_anchor_local = _web_anchor_body.to_local(_web_anchor)
+	else:
+		_web_anchor_local = Vector3.ZERO
+	var distance := global_position.distance_to(_web_anchor)
+	var desired_rope_length := distance * web_rope_slack
+	if is_on_floor():
+		var anchor_height := maxf(
+			_web_anchor.y - global_position.y,
+			web_min_rope_length
+		)
+		desired_rope_length = minf(
+			desired_rope_length,
+			anchor_height * 1.25
+		)
+	_web_rope_length = maxf(desired_rope_length, web_min_rope_length)
+	_web_hand_side *= -1.0
+	_web_active = true
+	_dash_time_left = 0.0
+	var pull_direction := (_web_anchor - global_position).normalized()
+	velocity += pull_direction * web_attach_pull
+	if is_on_floor():
+		velocity.y = maxf(velocity.y, jump_velocity * 0.85)
+	crosshair.color = Color(0.38, 0.9, 1.0, 1.0)
+	_web_line.visible = true
+	_web_anchor_marker.visible = true
+	if _web_audio_player:
+		_web_audio_player.pitch_scale = randf_range(0.96, 1.06)
+		_web_audio_player.play()
+
+
+func _release_web(boosted: bool) -> void:
+	if not _web_active:
+		return
+	_web_active = false
+	_web_anchor_body = null
+	_web_line.visible = false
+	_web_anchor_marker.visible = false
+	crosshair.color = Color(1.0, 1.0, 1.0, 0.6235)
+	if boosted:
+		var forward := -camera.global_transform.basis.z
+		var launch_direction := (forward + Vector3.UP * 0.48).normalized()
+		velocity += launch_direction * web_release_boost
+		if velocity.length() > web_max_speed:
+			velocity = velocity.normalized() * web_max_speed
+		if _web_audio_player:
+			_web_audio_player.pitch_scale = 1.32
+			_web_audio_player.play()
+
+
+func _refresh_web_anchor() -> bool:
+	if _web_anchor_body == null:
+		return true
+	if not is_instance_valid(_web_anchor_body):
+		_release_web(false)
+		return false
+	_web_anchor = _web_anchor_body.to_global(_web_anchor_local)
+	return true
+
+
+func _update_web_swing(move_direction: Vector3, delta: float) -> void:
+	if not _refresh_web_anchor():
+		return
+	var to_anchor := _web_anchor - global_position
+	var distance := to_anchor.length()
+	if distance < 0.01 or distance > web_range * 1.35:
+		_release_web(false)
+		return
+	var radial_direction := to_anchor / distance
+	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0:
+		var dash_tangent := velocity.slide(radial_direction)
+		if dash_tangent.length_squared() < 0.01:
+			dash_tangent = (-camera.global_transform.basis.z).slide(radial_direction)
+		if dash_tangent.length_squared() > 0.01:
+			velocity += dash_tangent.normalized() * dash_speed * 0.65
+			_dash_cooldown_left = dash_cooldown
+			if _dash_player:
+				_dash_player.play()
+	var tangent_input := move_direction.slide(radial_direction)
+	if tangent_input.length_squared() > 0.001:
+		velocity += tangent_input.normalized() * web_steer_acceleration * delta
+
+	if _move_input.y < -0.05:
+		var forward_tangent := (-camera.global_transform.basis.z).slide(radial_direction)
+		if forward_tangent.length_squared() > 0.001:
+			velocity += forward_tangent.normalized() * web_forward_assist * delta
+
+	if distance > _web_rope_length:
+		var stretch := distance - _web_rope_length
+		var away_speed := velocity.dot(-radial_direction)
+		if away_speed > 0.0:
+			velocity += radial_direction * away_speed
+		velocity += radial_direction * (
+			web_tension + stretch * web_spring_strength
+		) * delta
+
+	velocity *= maxf(1.0 - web_air_drag * delta, 0.0)
+	if velocity.length() > web_max_speed:
+		velocity = velocity.normalized() * web_max_speed
+
+
+func _update_web_visual() -> void:
+	if not _web_active or not _refresh_web_anchor():
+		return
+	var line_start := camera.global_position + (
+		camera.global_transform.basis * Vector3(
+			0.28 * _web_hand_side,
+			-0.2,
+			-0.42
+		)
+	)
+	var line_vector := _web_anchor - line_start
+	var line_length := line_vector.length()
+	if line_length < 0.01:
+		return
+	var line_mesh := _web_line.mesh as CylinderMesh
+	line_mesh.height = line_length
+	_web_line.global_transform = Transform3D(
+		Basis(Quaternion(Vector3.UP, line_vector / line_length)),
+		line_start + line_vector * 0.5
+	)
+	_web_anchor_marker.global_position = _web_anchor
 
 
 func _create_audio_player(
@@ -610,6 +897,15 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 
 	var strafe_roll := -_move_input.x * strafe_roll_degrees * speed_ratio
 	var target_roll := deg_to_rad(strafe_roll + _turn_roll_input)
+	if _web_active:
+		var local_anchor_direction := camera.global_transform.basis.inverse() * (
+			_web_anchor - camera.global_position
+		).normalized()
+		target_roll += deg_to_rad(web_camera_roll_degrees) * clampf(
+			-local_anchor_direction.x,
+			-1.0,
+			1.0
+		)
 	var target_position := _camera_start_position + bob_offset + shake_offset
 	target_position.y += headbutt_pose.x - _landing_kick
 	target_position.z += headbutt_pose.y + _weapon_recoil_back
@@ -644,6 +940,13 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 		target_fov += sprint_fov_boost * speed_ratio
 	if _dash_time_left > 0.0:
 		target_fov += dash_fov_boost
+	if _web_active:
+		var web_speed_ratio := clampf(
+			(horizontal_speed - sprint_speed) / (web_max_speed - sprint_speed),
+			0.0,
+			1.0
+		)
+		target_fov += web_fov_boost * web_speed_ratio
 	target_fov += _weapon_recoil_fov
 	camera.fov = lerpf(camera.fov, target_fov, _exp_weight(8.0, delta))
 
