@@ -64,6 +64,17 @@ func _run_test() -> void:
 	if left_hit.is_empty() or right_hit.is_empty():
 		_fail("both web shooters must find a valid building anchor")
 		return
+	var camera_forward: Vector3 = -player.camera.global_basis.z
+	for hit: Dictionary in [left_hit, right_hit]:
+		var hit_direction: Vector3 = (
+			hit["position"] - player.camera.global_position
+		).normalized()
+		if hit_direction.dot(camera_forward) < 0.999:
+			_fail("web anchor search ignored a valid crosshair hit")
+			return
+	if left_hit["position"].distance_to(right_hit["position"]) > 0.01:
+		_fail("left and right webs disagreed on the direct crosshair target")
+		return
 	player._attach_web(left_hit, player.WEB_LEFT)
 	player._attach_web(right_hit, player.WEB_RIGHT)
 	if (

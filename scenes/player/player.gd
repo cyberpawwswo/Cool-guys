@@ -24,6 +24,7 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export_category("Web Shooter")
 @export var web_range := 95.0
 @export var web_min_anchor_height := 2.0
+@export var web_air_anchor_drop := 8.0
 @export var web_rope_slack := 0.82
 @export var web_min_rope_length := 3.5
 @export var web_tension := 28.0
@@ -512,51 +513,74 @@ func _has_active_web() -> bool:
 
 func _find_web_anchor(side := WEB_LEFT) -> Dictionary:
 	var origin := camera.global_position
-	var forward := -camera.global_transform.basis.z
-	var up := camera.global_transform.basis.y
-	var right := camera.global_transform.basis.x
+	var forward := -camera.global_basis.z
+	var up := camera.global_basis.y
+	var right := camera.global_basis.x
 	var side_sign := -1.0 if side == WEB_LEFT else 1.0
-	var directions: Array[Vector3] = [
-		forward,
-		(forward + up * 0.2).normalized(),
-		(forward + up * 0.38).normalized(),
-		(forward - right * 0.24 + up * 0.22).normalized(),
-		(forward + right * 0.24 + up * 0.22).normalized(),
-		(forward - right * 0.42 + up * 0.3).normalized(),
-		(forward + right * 0.42 + up * 0.3).normalized(),
-		(forward - right * 0.72 + up * 0.26).normalized(),
-		(forward + right * 0.72 + up * 0.26).normalized(),
+	var direct_hit := _raycast_web_anchor(origin, forward)
+	if _is_valid_web_anchor(direct_hit):
+		return direct_hit
+
+	var search_offsets: Array[Vector2] = [
+		Vector2(0.0, 0.12),
+		Vector2(side_sign * 0.1, 0.1),
+		Vector2(-side_sign * 0.1, 0.12),
+		Vector2(side_sign * 0.2, 0.16),
+		Vector2(-side_sign * 0.2, 0.18),
+		Vector2(0.0, 0.25),
+		Vector2(side_sign * 0.32, 0.23),
+		Vector2(-side_sign * 0.32, 0.25),
+		Vector2(side_sign * 0.42, 0.3),
+		Vector2(-side_sign * 0.42, 0.3),
 	]
-	var space_state := get_world_3d().direct_space_state
 	var best_hit: Dictionary = {}
 	var best_score := -INF
-	for direction in directions:
-		var query := PhysicsRayQueryParameters3D.create(
-			origin,
-			origin + direction * web_range
-		)
-		query.exclude = [get_rid()]
-		query.collide_with_areas = false
-		var hit := space_state.intersect_ray(query)
-		if hit.is_empty():
-			continue
-		if not hit.collider is StaticBody3D:
+	var horizontal_velocity := Vector3(velocity.x, 0.0, velocity.z)
+	var travel_direction := (
+		horizontal_velocity.normalized()
+		if horizontal_velocity.length() > sprint_speed
+		else Vector3(forward.x, 0.0, forward.z).normalized()
+	)
+	for offset in search_offsets:
+		var direction := (forward + right * offset.x + up * offset.y).normalized()
+		var hit := _raycast_web_anchor(origin, direction)
+		if not _is_valid_web_anchor(hit):
 			continue
 		var point: Vector3 = hit.position
 		var height := point.y - global_position.y
-		if height < web_min_anchor_height:
-			continue
 		var distance := origin.distance_to(point)
+		var horizontal_direction := Vector3(direction.x, 0.0, direction.z).normalized()
+		var center_proximity := 1.0 - clampf(offset.length() / 0.52, 0.0, 1.0)
 		var score := (
-			height / web_range * 2.4
-			+ direction.dot(forward) * 2.0
-			+ direction.dot(right) * side_sign * 0.5
-			- distance / web_range * 0.35
+			center_proximity * 5.0
+			+ direction.dot(forward) * 1.5
+			+ clampf(height / 25.0, -1.0, 1.0) * 0.35
+			+ horizontal_direction.dot(travel_direction) * 0.25
+			+ maxf(offset.x * side_sign, 0.0) * 0.12
+			- distance / web_range * 0.18
 		)
 		if score > best_score:
 			best_score = score
 			best_hit = hit
 	return best_hit
+
+
+func _raycast_web_anchor(origin: Vector3, direction: Vector3) -> Dictionary:
+	var query := PhysicsRayQueryParameters3D.create(
+		origin,
+		origin + direction * web_range
+	)
+	query.exclude = [get_rid()]
+	query.collide_with_areas = false
+	return get_world_3d().direct_space_state.intersect_ray(query)
+
+
+func _is_valid_web_anchor(hit: Dictionary) -> bool:
+	if hit.is_empty() or not hit.collider is StaticBody3D:
+		return false
+	var point: Vector3 = hit.position
+	var minimum_height := web_min_anchor_height if is_on_floor() else -web_air_anchor_drop
+	return point.y - global_position.y >= minimum_height
 
 
 func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
