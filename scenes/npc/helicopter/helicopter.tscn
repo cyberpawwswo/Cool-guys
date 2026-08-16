@@ -14,17 +14,6 @@
 [ext_resource type="Script" uid="uid://bxirywugtvhie" path="res://scenes/explustion_complation/explustion_complation.gd" id="19_48a8b"]
 [ext_resource type="ArrayMesh" uid="uid://c44lujhi6bkic" path="res://assets/muzzle_flash/falsh_cone.obj" id="22_muupj"]
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_48a8b"]
-sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
-ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
-
-[sub_resource type="Sky" id="Sky_t8o15"]
-sky_material = SubResource("ProceduralSkyMaterial_48a8b")
-
-[sub_resource type="Environment" id="Environment_wwxwb"]
-background_mode = 2
-sky = SubResource("Sky_t8o15")
-
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_muupj"]
 transparency = 1
 cull_mode = 2
@@ -127,66 +116,19 @@ albedo_texture = ExtResource("4_lqpol")
 radius = 24.1167
 height = 164.69186
 
-[sub_resource type="BoxMesh" id="BoxMesh_3ube6"]
-
-[sub_resource type="Animation" id="Animation_t8o15"]
-length = 0.001
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("MeshInstance3D:position")
-tracks/0/interp = 1
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(2.3918505, 0, -5.603255)]
-}
-
-[sub_resource type="Animation" id="Animation_48a8b"]
-resource_name = "new_animation"
-length = 10.0
-loop_mode = 1
-tracks/0/type = "value"
-tracks/0/imported = false
-tracks/0/enabled = true
-tracks/0/path = NodePath("MeshInstance3D:position")
-tracks/0/interp = 2
-tracks/0/loop_wrap = true
-tracks/0/keys = {
-"times": PackedFloat32Array(0, 5),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [Vector3(2.3918505, 0, -5.603255), Vector3(-3.2574258, 0, -5.603255)]
-}
-
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_t8o15"]
-_data = {
-&"RESET": SubResource("Animation_t8o15"),
-&"new_animation": SubResource("Animation_48a8b")
-}
-
-[node name="Node3D2" type="Node3D" unique_id=1322960303]
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=890276069]
-transform = Transform3D(0.9011093, 0.43040845, 0.05245313, 0.26081103, -0.63468766, 0.7274264, 0.34638193, -0.64181024, -0.6841779, 0, 0, 0)
-shadow_enabled = true
-
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1059492427]
-environment = SubResource("Environment_wwxwb")
-
-[node name="Helicopter" type="CharacterBody3D" parent="." unique_id=1497905902]
+[node name="Helicopter" type="CharacterBody3D" unique_id=1497905902 node_paths=PackedStringArray("player")]
 script = ExtResource("1_1gqs3")
+player = NodePath("")
 
-[node name="RayCast3D" type="RayCast3D" parent="Helicopter" unique_id=1513896982]
+[node name="RayCast3D" type="RayCast3D" parent="." unique_id=1513896982]
 target_position = Vector3(0, 0, -200)
 
-[node name="ExplusionComplation" type="Node3D" parent="Helicopter/RayCast3D" unique_id=194484195]
+[node name="ExplusionComplation" type="Node3D" parent="RayCast3D" unique_id=194484195]
 script = ExtResource("19_48a8b")
 metadata/_custom_type_script = "uid://bxirywugtvhie"
 
-[node name="MainParticle" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=395486735]
+[node name="MainParticle" type="GPUParticles3D" parent="RayCast3D/ExplusionComplation" unique_id=395486735]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.308333, 1.3577559, -1.6637278)
 material_override = SubResource("StandardMaterial3D_muupj")
 emitting = false
 amount = 1
@@ -196,7 +138,8 @@ local_coords = true
 process_material = SubResource("ParticleProcessMaterial_wwxwb")
 draw_pass_1 = ExtResource("2_t8o15")
 
-[node name="FlashParticle" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=172801697]
+[node name="FlashParticle" type="GPUParticles3D" parent="RayCast3D/ExplusionComplation" unique_id=172801697]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.308333, 1.3577559, -1.6637278)
 emitting = false
 amount = 1
 lifetime = 0.12
@@ -205,7 +148,8 @@ local_coords = true
 process_material = SubResource("ParticleProcessMaterial_bavw8")
 draw_pass_1 = SubResource("QuadMesh_oh74m")
 
-[node name="CIrleParcile" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=337745614]
+[node name="CIrleParcile" type="GPUParticles3D" parent="RayCast3D/ExplusionComplation" unique_id=337745614]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.308333, 1.3577559, -1.6637278)
 material_override = SubResource("StandardMaterial3D_wwxwb")
 emitting = false
 amount = 1
@@ -215,7 +159,8 @@ local_coords = true
 process_material = SubResource("ParticleProcessMaterial_wwxwb")
 draw_pass_1 = ExtResource("22_muupj")
 
-[node name="SmallParticle" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=480024897]
+[node name="SmallParticle" type="GPUParticles3D" parent="RayCast3D/ExplusionComplation" unique_id=480024897]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.308333, 1.3577559, -1.6637278)
 emitting = false
 amount = 10
 lifetime = 0.15000000000000002
@@ -226,31 +171,24 @@ transform_align = 2
 process_material = SubResource("ParticleProcessMaterial_muupj")
 draw_pass_1 = SubResource("QuadMesh_7m2p8")
 
-[node name="Camera3D" type="Camera3D" parent="Helicopter" unique_id=1464729859]
-transform = Transform3D(0.17496844, 0, -0.9845742, 0, 1, 0, 0.984574, 0, 0.17496845, -4.496567, 1.4609177, -0.7413416)
-
-[node name="MachineGun" type="Node3D" parent="Helicopter" unique_id=1205078171 node_paths=PackedStringArray("shoot_ray_cast", "explution_shoot")]
+[node name="MachineGun" type="Node3D" parent="." unique_id=1205078171 node_paths=PackedStringArray("shoot_ray_cast", "explution_shoot")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3632402, 2.7266657, 0)
 script = ExtResource("1_lqpol")
 rate_of_fire = 0.4
 shoot_ray_cast = NodePath("../RayCast3D")
 explution_shoot = NodePath("../RayCast3D/ExplusionComplation")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Helicopter" unique_id=42859927]
-transform = Transform3D(-1.3113416e-09, 0, 0.03, 0, 0.03, 0, -0.03, 0, -1.3113416e-09, 0.16483921, 0, 0.16483921)
-visible = false
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=42859927]
+transform = Transform3D(-4.371139e-09, 0, 0.1, 0, 0.1, 0, -0.1, 0, -4.371139e-09, 0.16483921, 0, 0.16483921)
 mesh = ExtResource("1_lu8db")
 surface_material_override/0 = SubResource("StandardMaterial3D_1luts")
 surface_material_override/1 = SubResource("StandardMaterial3D_ttjo5")
 surface_material_override/2 = SubResource("StandardMaterial3D_cfu8l")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Helicopter" unique_id=1521595793]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1521595793]
 transform = Transform3D(5.5793e-12, -8.302877e-10, 0.0189952, -0.01899477, -0.0001276395, 0, 0.0001276395, -0.01899477, -8.3030655e-10, 0.16483921, 0.6069196, -0.16483921)
 shape = SubResource("CapsuleShape3D_oh74m")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1091480837]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3918505, 0, -5.603255)
-mesh = SubResource("BoxMesh_3ube6")
-
-[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=2055487085]
-libraries/ = SubResource("AnimationLibrary_t8o15")
+[node name="RayCast3D2" type="RayCast3D" parent="." unique_id=232484742]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.44667184, 0)
+target_position = Vector3(0, 0, -20)

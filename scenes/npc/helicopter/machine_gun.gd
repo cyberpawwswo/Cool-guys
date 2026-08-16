@@ -9,7 +9,7 @@ extends Node3D
 @export var explution_effter_shoot: ExplusionComplation
 @export var explution_shoot: ExplusionComplation
 
-@export var max_angle := deg_to_rad(25) 
+@export var max_angle := deg_to_rad(30) 
 
 var timer_shoot: Timer
 
@@ -30,9 +30,9 @@ func _ready() -> void:
 @warning_ignore("unused_parameter")
 func _process(delta: float) -> void:
 	if target:
-		var angle = (-shoot_ray_cast.global_basis.z).angle_to(shoot_ray_cast.target_position)
-		if angle < max_angle:
-			rotate_towards(shoot_ray_cast, target, delta, 0.3)
+		#var angle = (-shoot_ray_cast.global_basis.z).angle_to(shoot_ray_cast.target_position)
+		#if angle < max_angle:
+		rotate_towards(shoot_ray_cast, target, delta, 2.0)
 	else:
 		var a = Quaternion(shoot_ray_cast.global_basis)
 		var b = Quaternion(global_basis)
@@ -44,7 +44,7 @@ func rotate_towards(object: Node3D, tgt: Node3D, delta: float, speed: float = 5.
 		return
 	
 	# Текущий и целевой кватернионы
-	var current_quat = object.transform.basis.get_rotation_quaternion()
+	var current_quat = object.global_basis.get_rotation_quaternion()
 	var tgt_basis = Basis.looking_at(tgt.global_position - object.global_position, Vector3.UP)
 	var tgt_quat = tgt_basis.get_rotation_quaternion()
 	
@@ -52,7 +52,7 @@ func rotate_towards(object: Node3D, tgt: Node3D, delta: float, speed: float = 5.
 	var new_quat = current_quat.slerp(tgt_quat, clampf(speed * delta, 0.0, 1.0))
 	
 	# Применяем обратно в трансформ, сохраняя позицию и масштаб
-	object.transform.basis = Basis(new_quat)
+	object.global_basis = Basis(new_quat)
 
 func start_shooting():
 	timer_shoot.wait_time = rate_of_fire

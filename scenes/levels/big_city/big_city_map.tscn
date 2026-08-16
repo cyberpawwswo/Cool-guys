@@ -1,12 +1,12 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene format=3 uid="uid://dv8553uh2kmii"]
 
-[ext_resource type="PackedScene" path="res://assets/maps/big_city/big_city.glb" id="1_model"]
+[ext_resource type="PackedScene" uid="uid://cjuuqklh1qi1j" path="res://assets/maps/big_city/big_city.glb" id="1_model"]
 [ext_resource type="PackedScene" path="res://scenes/levels/big_city/big_city_collision.scn" id="2_collision"]
-[ext_resource type="Script" path="res://scenes/levels/big_city/big_city_map.gd" id="3_script"]
+[ext_resource type="Script" uid="uid://l2p22y2redqc" path="res://scenes/levels/big_city/big_city_map.gd" id="3_script"]
+[ext_resource type="PackedScene" uid="uid://ddta6a716fcit" path="res://scenes/npc/helicopter/helicopter.tscn" id="4_b8n5o"]
 
 [sub_resource type="StandardMaterial3D" id="SafetyMaterial"]
 albedo_color = Color(0.12, 0.13, 0.14, 1)
-roughness = 1.0
 
 [sub_resource type="BoxMesh" id="SafetyMesh"]
 material = SubResource("SafetyMaterial")
@@ -15,18 +15,32 @@ size = Vector3(720, 0.5, 720)
 [sub_resource type="BoxShape3D" id="SafetyShape"]
 size = Vector3(720, 0.5, 720)
 
-[node name="BigCityMap" type="Node3D"]
+[sub_resource type="SphereShape3D" id="SphereShape3D_oh74m"]
+radius = 99.228355
+
+[node name="BigCityMap" type="Node3D" unique_id=1944094950]
 script = ExtResource("3_script")
 
-[node name="Model" parent="." instance=ExtResource("1_model")]
+[node name="Model" parent="." unique_id=654243141 instance=ExtResource("1_model")]
 
-[node name="Collision" parent="." instance=ExtResource("2_collision")]
+[node name="Collision" parent="." unique_id=202161816 instance=ExtResource("2_collision")]
 
-[node name="SafetyUnderlay" type="StaticBody3D" parent="."]
-position = Vector3(-165, -2.25, -180)
+[node name="SafetyUnderlay" type="StaticBody3D" parent="." unique_id=313536886]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -165, -2.25, -180)
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="SafetyUnderlay"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="SafetyUnderlay" unique_id=1495162535]
 mesh = SubResource("SafetyMesh")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="SafetyUnderlay"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SafetyUnderlay" unique_id=1144853714]
 shape = SubResource("SafetyShape")
+
+[node name="TriggerHellicopter" type="Area3D" parent="." unique_id=1859664132]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.1309, 7.4969826, -441.66714)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TriggerHellicopter" unique_id=841945942]
+shape = SubResource("SphereShape3D_oh74m")
+
+[node name="Helicopter" parent="." unique_id=1497905902 instance=ExtResource("4_b8n5o")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.1309, 7.4969826, -441.66714)
+
+[connection signal="body_entered" from="TriggerHellicopter" to="Helicopter" method="_on_trigger_hellicopter_body_entered"]
