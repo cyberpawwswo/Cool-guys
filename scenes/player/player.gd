@@ -38,8 +38,8 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var web_fov_boost := 9.0
 @export var web_shot_speed := 135.0
 @export var web_visual_segments := 20
-@export var web_visual_radius := 0.026
-@export var web_visual_origin_depth := 0.58
+@export var web_visual_pixel_width := 4.0
+@export var web_visual_depth := 5.0
 
 @export_category("Camera")
 @export var mouse_sensitivity := 0.005
@@ -407,24 +407,25 @@ func _update_floor_assistance(delta: float) -> void:
 func _create_web_shooter() -> void:
 	var web_material := StandardMaterial3D.new()
 	web_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	web_material.albedo_color = Color(0.82, 0.95, 1.0, 1.0)
+	web_material.albedo_color = Color(0.88, 0.95, 1.0, 1.0)
 	web_material.emission_enabled = true
-	web_material.emission = Color(0.28, 0.66, 1.0)
-	web_material.emission_energy_multiplier = 1.8
+	web_material.emission = Color(0.18, 0.38, 0.58)
+	web_material.emission_energy_multiplier = 0.85
 	web_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 	var marker_mesh := SphereMesh.new()
-	marker_mesh.radius = 0.11
-	marker_mesh.height = 0.22
+	marker_mesh.radius = 0.035
+	marker_mesh.height = 0.07
 	marker_mesh.material = web_material
 	for side in 2:
 		var line_mesh := ImmediateMesh.new()
 		var line := MeshInstance3D.new()
 		line.name = "LeftWebLine" if side == WEB_LEFT else "RightWebLine"
 		line.mesh = line_mesh
+		line.layers = 2
 		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		line.visible = false
-		add_child(line)
+		weapon_manager.add_child(line)
 		line.top_level = true
 		_web_lines.append(line)
 
@@ -696,13 +697,7 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 
 
 func _get_web_hand_position(side: int) -> Vector3:
-	var viewport_uv: Vector2 = weapon_manager.get_web_origin_viewport_uv(side)
-	var viewport_size := Vector2(get_viewport().get_visible_rect().size)
-	var screen_position := viewport_uv * viewport_size
-	return (
-		camera.project_ray_origin(screen_position)
-		+ camera.project_ray_normal(screen_position) * web_visual_origin_depth
-	)
+	return weapon_manager.get_web_origin_global_position(side)
 
 
 func _update_web_visual(delta: float) -> void:
@@ -712,7 +707,7 @@ func _update_web_visual(delta: float) -> void:
 		var state := _web_states[side]
 		var line_start := _get_web_hand_position(side)
 		var anchor: Vector3 = state["anchor"]
-		var full_length := line_start.distance_to(anchor)
+		var full_length := camera.global_position.distance_to(anchor)
 		if full_length < 0.05:
 			continue
 		state["visual_progress"] = minf(
@@ -721,8 +716,14 @@ func _update_web_visual(delta: float) -> void:
 		)
 		state["visual_phase"] = fmod(float(state["visual_phase"]) + delta * 3.2, TAU)
 		_web_states[side] = state
+		var root_viewport_size := Vector2(get_viewport().get_visible_rect().size)
+		var anchor_uv := camera.unproject_position(anchor) / root_viewport_size
+		var visual_target: Vector3 = weapon_manager.get_web_visual_target(
+			anchor_uv,
+			web_visual_depth
+		)
 		var visible_anchor := line_start.lerp(
-			anchor,
+			visual_target,
 			_smoothstep(float(state["visual_progress"]))
 		)
 		var points := _build_web_curve(
@@ -732,7 +733,13 @@ func _update_web_visual(delta: float) -> void:
 			side
 		)
 		var line_mesh := _web_lines[side].mesh as ImmediateMesh
-		_build_web_mesh(line_mesh, points, float(state["visual_phase"]), side)
+		_build_web_mesh(
+			line_mesh,
+			points,
+			line_start,
+			float(state["visual_phase"]),
+			side
+		)
 		_web_lines[side].global_transform = Transform3D(Basis.IDENTITY, line_start)
 		_web_anchor_markers[side].global_position = anchor
 		var marker_scale := lerpf(0.15, 1.0, float(state["visual_progress"]))
@@ -750,13 +757,10 @@ func _build_web_curve(
 	var distance := relative_end.length()
 	var segment_count := maxi(web_visual_segments, 6)
 	var launch_amount := 1.0 - float(state["visual_progress"])
-	var slack: float = maxf(
-		float(state["rope_length"]) - global_position.distance_to(state["anchor"]),
-		0.0
-	)
-	var sag := clampf(distance * 0.012 + slack * 0.2, 0.03, 0.7)
+	var sag := clampf(distance * 0.025, 0.012, 0.12)
 	var side_sign := -1.0 if side == WEB_LEFT else 1.0
-	var lateral := camera.global_basis.x * side_sign
+	var viewmodel_camera: Camera3D = weapon_manager.get_viewmodel_camera()
+	var lateral := viewmodel_camera.global_basis.x * side_sign
 	for point_index in range(segment_count + 1):
 		var t := float(point_index) / float(segment_count)
 		var point := relative_end * t
@@ -775,6 +779,7 @@ func _build_web_curve(
 func _build_web_mesh(
 	mesh: ImmediateMesh,
 	core_points: PackedVector3Array,
+	line_start: Vector3,
 	phase: float,
 	side: int
 ) -> void:
@@ -783,7 +788,7 @@ func _build_web_mesh(
 		return
 	var web_material := (_web_anchor_markers[side].mesh as SphereMesh).material
 	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, web_material)
-	_append_web_tube(mesh, core_points, web_visual_radius, 7)
+	_append_web_ribbon(mesh, core_points, line_start, web_visual_pixel_width)
 	for strand_index in 2:
 		var strand_points := PackedVector3Array()
 		for point_index in core_points.size():
@@ -793,37 +798,72 @@ func _build_web_mesh(
 			var angle := t * TAU * 9.0 + phase + PI * float(strand_index)
 			var offset := (
 				frame[0] * cos(angle) + frame[1] * sin(angle)
-			) * web_visual_radius * 1.35
+			) * 0.006
 			strand_points.append(core_points[point_index] + offset)
-		_append_web_tube(mesh, strand_points, web_visual_radius * 0.28, 4)
+		_append_web_ribbon(
+			mesh,
+			strand_points,
+			line_start,
+			web_visual_pixel_width * 0.38
+		)
 	mesh.surface_end()
 
 
-func _append_web_tube(
+func _append_web_ribbon(
 	mesh: ImmediateMesh,
 	points: PackedVector3Array,
-	radius: float,
-	sides: int
+	line_start: Vector3,
+	pixel_width: float
 ) -> void:
+	var viewmodel_camera: Camera3D = weapon_manager.get_viewmodel_camera()
+	var viewport_height := maxf(
+		float(viewmodel_camera.get_viewport().get_visible_rect().size.y),
+		1.0
+	)
 	for point_index in range(points.size() - 1):
 		var tangent_a := _web_curve_tangent(points, point_index)
 		var tangent_b := _web_curve_tangent(points, point_index + 1)
-		var frame_a := _web_curve_frame(tangent_a)
-		var frame_b := _web_curve_frame(tangent_b)
-		for radial_index in sides:
-			var next_radial := (radial_index + 1) % sides
-			var angle_a := TAU * float(radial_index) / float(sides)
-			var angle_b := TAU * float(next_radial) / float(sides)
-			var normal_a0: Vector3 = frame_a[0] * cos(angle_a) + frame_a[1] * sin(angle_a)
-			var normal_a1: Vector3 = frame_a[0] * cos(angle_b) + frame_a[1] * sin(angle_b)
-			var normal_b0: Vector3 = frame_b[0] * cos(angle_a) + frame_b[1] * sin(angle_a)
-			var normal_b1: Vector3 = frame_b[0] * cos(angle_b) + frame_b[1] * sin(angle_b)
-			_add_web_vertex(mesh, points[point_index] + normal_a0 * radius, normal_a0)
-			_add_web_vertex(mesh, points[point_index + 1] + normal_b0 * radius, normal_b0)
-			_add_web_vertex(mesh, points[point_index + 1] + normal_b1 * radius, normal_b1)
-			_add_web_vertex(mesh, points[point_index] + normal_a0 * radius, normal_a0)
-			_add_web_vertex(mesh, points[point_index + 1] + normal_b1 * radius, normal_b1)
-			_add_web_vertex(mesh, points[point_index] + normal_a1 * radius, normal_a1)
+		var global_a := line_start + points[point_index]
+		var global_b := line_start + points[point_index + 1]
+		var view_a := (viewmodel_camera.global_position - global_a).normalized()
+		var view_b := (viewmodel_camera.global_position - global_b).normalized()
+		var side_a := tangent_a.cross(view_a).normalized()
+		var side_b := tangent_b.cross(view_b).normalized()
+		if side_a.length_squared() < 0.001:
+			side_a = viewmodel_camera.global_basis.x
+		if side_b.length_squared() < 0.001:
+			side_b = viewmodel_camera.global_basis.x
+		var width_a := _web_world_half_width(
+			viewmodel_camera,
+			global_a,
+			viewport_height,
+			pixel_width
+		)
+		var width_b := _web_world_half_width(
+			viewmodel_camera,
+			global_b,
+			viewport_height,
+			pixel_width
+		)
+		var normal := (view_a + view_b).normalized()
+		_add_web_vertex(mesh, points[point_index] - side_a * width_a, normal)
+		_add_web_vertex(mesh, points[point_index + 1] - side_b * width_b, normal)
+		_add_web_vertex(mesh, points[point_index + 1] + side_b * width_b, normal)
+		_add_web_vertex(mesh, points[point_index] - side_a * width_a, normal)
+		_add_web_vertex(mesh, points[point_index + 1] + side_b * width_b, normal)
+		_add_web_vertex(mesh, points[point_index] + side_a * width_a, normal)
+
+
+func _web_world_half_width(
+	viewmodel_camera: Camera3D,
+	global_point: Vector3,
+	viewport_height: float,
+	pixel_width: float
+) -> float:
+	var camera_point := viewmodel_camera.to_local(global_point)
+	var depth := maxf(-camera_point.z, viewmodel_camera.near)
+	var world_height := 2.0 * depth * tan(deg_to_rad(viewmodel_camera.fov) * 0.5)
+	return world_height / viewport_height * pixel_width * 0.5
 
 
 func _add_web_vertex(mesh: ImmediateMesh, position: Vector3, normal: Vector3) -> void:

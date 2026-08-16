@@ -84,12 +84,25 @@ func _run_test() -> void:
 	player._update_web_visual(0.25)
 	for side in 2:
 		var web_mesh := player._web_lines[side].mesh as ImmediateMesh
+		if player._web_lines[side].get_viewport() != manager.get_viewport():
+			_fail("web ribbon is not rendered in the viewmodel viewport")
+			return
 		if web_mesh.get_surface_count() == 0:
 			_fail("detailed web mesh was not generated")
 			return
 		if not player._web_lines[side].global_transform.is_finite():
 			_fail("web mesh produced an invalid transform")
 			return
+	var root_viewport_size := Vector2(player.get_viewport().get_visible_rect().size)
+	var anchor: Vector3 = player._web_states[player.WEB_LEFT]["anchor"]
+	var anchor_uv: Vector2 = player.camera.unproject_position(anchor) / root_viewport_size
+	var visual_target: Vector3 = manager.get_web_visual_target(anchor_uv, player.web_visual_depth)
+	var viewmodel_camera: Camera3D = manager.get_viewmodel_camera()
+	var viewmodel_size := Vector2(viewmodel_camera.get_viewport().get_visible_rect().size)
+	var visual_target_uv := viewmodel_camera.unproject_position(visual_target) / viewmodel_size
+	if visual_target_uv.distance_to(anchor_uv) > 0.001:
+		_fail("viewmodel web target does not converge on the world anchor on screen")
+		return
 	var old_left_origin: Vector3 = player._web_lines[player.WEB_LEFT].global_position
 	player.camera.position += Vector3(0.35, 0.18, -0.12)
 	player.camera.rotation.y += 0.08
