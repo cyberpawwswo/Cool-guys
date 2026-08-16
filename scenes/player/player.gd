@@ -24,16 +24,21 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export_category("Web Shooter")
 @export var web_range := 95.0
 @export var web_min_anchor_height := 2.0
-@export var web_rope_slack := 0.92
+@export var web_rope_slack := 0.82
 @export var web_min_rope_length := 3.5
-@export var web_tension := 18.0
-@export var web_spring_strength := 11.0
-@export var web_steer_acceleration := 16.0
-@export var web_forward_assist := 9.0
-@export var web_attach_pull := 4.0
-@export var web_release_boost := 5.5
-@export var web_max_speed := 38.0
-@export var web_air_drag := 0.035
+@export var web_tension := 28.0
+@export var web_spring_strength := 12.0
+@export var web_radial_damping := 13.0
+@export var web_steer_acceleration := 23.0
+@export var web_forward_assist := 20.0
+@export var web_cruise_speed := 17.0
+@export var web_reel_speed := 12.0
+@export var web_extend_speed := 8.0
+@export var web_attach_pull := 7.0
+@export var web_attach_launch := 8.5
+@export var web_release_boost := 8.0
+@export var web_max_speed := 48.0
+@export var web_air_drag := 0.012
 @export var web_camera_roll_degrees := 5.0
 @export var web_fov_boost := 9.0
 @export var web_shot_speed := 135.0
@@ -582,8 +587,15 @@ func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
 	_dash_time_left = 0.0
 	var pull_direction := (anchor - global_position).normalized()
 	velocity += pull_direction * web_attach_pull
+	var launch_direction := (-camera.global_basis.z).slide(pull_direction)
+	if launch_direction.length_squared() < 0.01:
+		launch_direction = velocity.slide(pull_direction)
+	if launch_direction.length_squared() < 0.01:
+		launch_direction = pull_direction.cross(camera.global_basis.x)
+	launch_direction = (launch_direction.normalized() + Vector3.UP * 0.22).normalized()
+	velocity += launch_direction * web_attach_launch
 	if is_on_floor():
-		velocity.y = maxf(velocity.y, jump_velocity * 0.85)
+		velocity.y = maxf(velocity.y, jump_velocity * 1.15)
 	crosshair.color = Color(0.38, 0.9, 1.0, 1.0)
 	_web_lines[side].visible = true
 	_web_anchor_markers[side].visible = true
@@ -618,7 +630,10 @@ func _release_all_webs(boosted: bool) -> void:
 
 func _apply_web_release_boost() -> void:
 	var forward := -camera.global_transform.basis.z
-	var launch_direction := (forward + Vector3.UP * 0.48).normalized()
+	var momentum_direction := velocity.normalized() if velocity.length_squared() > 0.01 else forward
+	var launch_direction := (
+		momentum_direction * 0.72 + forward * 0.28 + Vector3.UP * 0.3
+	).normalized()
 	velocity += launch_direction * web_release_boost
 	if velocity.length() > web_max_speed:
 		velocity = velocity.normalized() * web_max_speed
@@ -657,6 +672,12 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 	if active_sides.is_empty():
 		return
 	var radial_direction := combined_radial.normalized()
+	var camera_forward_tangent := (-camera.global_basis.z).slide(radial_direction)
+	if camera_forward_tangent.length_squared() < 0.01:
+		camera_forward_tangent = velocity.slide(radial_direction)
+	if camera_forward_tangent.length_squared() < 0.01:
+		camera_forward_tangent = radial_direction.cross(camera.global_basis.x)
+	camera_forward_tangent = camera_forward_tangent.normalized()
 	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0:
 		var dash_tangent := velocity.slide(radial_direction)
 		if dash_tangent.length_squared() < 0.01:
@@ -670,10 +691,15 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 	if tangent_input.length_squared() > 0.001:
 		velocity += tangent_input.normalized() * web_steer_acceleration * delta
 
-	if _move_input.y < -0.05:
-		var forward_tangent := (-camera.global_transform.basis.z).slide(radial_direction)
-		if forward_tangent.length_squared() > 0.001:
-			velocity += forward_tangent.normalized() * web_forward_assist * delta
+	var tangent_velocity := velocity.slide(radial_direction)
+	var tangent_speed := tangent_velocity.length()
+	var wants_to_brake := _move_input.y > 0.2
+	if not wants_to_brake:
+		var speed_deficit := maxf(web_cruise_speed - tangent_speed, 0.0)
+		var assisted_acceleration := web_forward_assist + speed_deficit * 2.0
+		velocity += camera_forward_tangent * assisted_acceleration * delta
+	else:
+		velocity -= tangent_velocity * minf(delta * 1.8, 0.3)
 
 	for side in active_sides:
 		var state := _web_states[side]
@@ -682,13 +708,32 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 		var distance := to_anchor.length()
 		var side_radial := to_anchor / distance
 		var rope_length: float = state["rope_length"]
-		if distance > rope_length:
-			var stretch := distance - rope_length
+		var minimum_length := maxf(web_min_rope_length, distance * 0.55)
+		if _move_input.y < -0.2:
+			rope_length = maxf(rope_length - web_reel_speed * delta, minimum_length)
+		elif wants_to_brake:
+			rope_length = minf(
+				rope_length + web_extend_speed * delta,
+				minf(web_range, distance * 1.08)
+			)
+		state["rope_length"] = rope_length
+		_web_states[side] = state
+		var tension_start := rope_length * 0.9
+		if distance > tension_start:
+			var stretch := maxf(distance - rope_length, 0.0)
+			var tension_amount := clampf(
+				(distance - tension_start) / maxf(rope_length * 0.1, 0.01),
+				0.0,
+				1.0
+			)
 			var away_speed := velocity.dot(-side_radial)
 			if away_speed > 0.0:
-				velocity += side_radial * away_speed
+				velocity += side_radial * away_speed * minf(
+					web_radial_damping * delta,
+					1.0
+				)
 			velocity += side_radial * (
-				web_tension + stretch * web_spring_strength
+				web_tension * tension_amount + stretch * web_spring_strength
 			) * delta
 
 	velocity *= maxf(1.0 - web_air_drag * delta, 0.0)

@@ -80,6 +80,33 @@ func _run_test() -> void:
 	):
 		_fail("web rope lengths were not initialized")
 		return
+	player.velocity = Vector3.ZERO
+	player._move_input = Vector2.ZERO
+	var combined_anchor_direction := Vector3.ZERO
+	for side in 2:
+		combined_anchor_direction += (
+			player._web_states[side]["anchor"] - player.global_position
+		).normalized()
+	combined_anchor_direction = combined_anchor_direction.normalized()
+	for frame in 12:
+		player._update_web_swing(Vector3.ZERO, 1.0 / 60.0)
+	var pull_speed: float = player.velocity.dot(combined_anchor_direction)
+	var assisted_tangent_speed: float = player.velocity.slide(
+		combined_anchor_direction
+	).length()
+	if pull_speed < 3.0:
+		_fail("web swing did not actively pull the player toward its anchors")
+		return
+	if assisted_tangent_speed < 3.0:
+		_fail("web swing did not create assisted forward momentum")
+		return
+	var rope_length_before_reel: float = player._web_states[player.WEB_LEFT]["rope_length"]
+	player._move_input = Vector2(0.0, -1.0)
+	player._update_web_swing(-player.global_basis.z, 0.2)
+	if player._web_states[player.WEB_LEFT]["rope_length"] >= rope_length_before_reel:
+		_fail("holding forward did not reel in the web")
+		return
+	player._move_input = Vector2.ZERO
 
 	player._update_web_visual(0.25)
 	for side in 2:
