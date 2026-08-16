@@ -43,6 +43,21 @@ func _run_test() -> void:
 	if not manager.is_web_shooter_selected():
 		_fail("web shooters are not available as weapon slot 4")
 		return
+	var left_origin_uv: Vector2 = manager.get_web_origin_viewport_uv(player.WEB_LEFT)
+	var right_origin_uv: Vector2 = manager.get_web_origin_viewport_uv(player.WEB_RIGHT)
+	if (
+		not left_origin_uv.is_finite()
+		or not right_origin_uv.is_finite()
+		or left_origin_uv.x >= right_origin_uv.x
+		or left_origin_uv.x < 0.0
+		or right_origin_uv.x > 1.0
+		or left_origin_uv.y < 0.0
+		or left_origin_uv.y > 1.0
+		or right_origin_uv.y < 0.0
+		or right_origin_uv.y > 1.0
+	):
+		_fail("web origins are not attached to the left and right viewmodel emitters")
+		return
 
 	var left_hit: Dictionary = player._find_web_anchor(player.WEB_LEFT)
 	var right_hit: Dictionary = player._find_web_anchor(player.WEB_RIGHT)
@@ -78,6 +93,7 @@ func _run_test() -> void:
 	var old_left_origin: Vector3 = player._web_lines[player.WEB_LEFT].global_position
 	player.camera.position += Vector3(0.35, 0.18, -0.12)
 	player.camera.rotation.y += 0.08
+	manager.position += Vector3(0.09, -0.04, 0.0)
 	player._update_web_visual(1.0 / 60.0)
 	var expected_left_origin: Vector3 = player._get_web_hand_position(player.WEB_LEFT)
 	if not player._web_lines[player.WEB_LEFT].global_position.is_equal_approx(expected_left_origin):

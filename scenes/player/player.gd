@@ -39,6 +39,7 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var web_shot_speed := 135.0
 @export var web_visual_segments := 20
 @export var web_visual_radius := 0.026
+@export var web_visual_origin_depth := 0.58
 
 @export_category("Camera")
 @export var mouse_sensitivity := 0.005
@@ -695,11 +696,12 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 
 
 func _get_web_hand_position(side: int) -> Vector3:
-	var hand_offset := -0.28 if side == WEB_LEFT else 0.28
-	return camera.global_position + camera.global_basis * Vector3(
-		hand_offset,
-		-0.2,
-		-0.42
+	var viewport_uv: Vector2 = weapon_manager.get_web_origin_viewport_uv(side)
+	var viewport_size := Vector2(get_viewport().get_visible_rect().size)
+	var screen_position := viewport_uv * viewport_size
+	return (
+		camera.project_ray_origin(screen_position)
+		+ camera.project_ray_normal(screen_position) * web_visual_origin_depth
 	)
 
 

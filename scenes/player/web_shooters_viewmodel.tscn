@@ -49,6 +49,9 @@ position = Vector3(0, 0.12, -0.3)
 rotation = Vector3(1.5708, 0, 0)
 mesh = SubResource("EmitterMesh")
 
+[node name="WebOrigin" type="Marker3D" parent="LeftArm"]
+position = Vector3(0, 0.12, -0.355)
+
 [node name="RightArm" type="Node3D" parent="."]
 position = Vector3(0.34, -0.34, -0.68)
 rotation = Vector3(-1.08, 0.12, 0.06)
@@ -64,3 +67,6 @@ mesh = SubResource("ShooterMesh")
 position = Vector3(0, 0.12, -0.3)
 rotation = Vector3(1.5708, 0, 0)
 mesh = SubResource("EmitterMesh")
+
+[node name="WebOrigin" type="Marker3D" parent="RightArm"]
+position = Vector3(0, 0.12, -0.355)

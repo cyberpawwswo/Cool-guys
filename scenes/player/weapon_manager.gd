@@ -194,11 +194,25 @@ var _black_white_mode := false
 
 
 func _ready() -> void:
+	process_priority = -10
 	for index in WEAPON_DATA.size():
 		_ammo_in_magazine.append(int(WEAPON_DATA[index]["magazine_capacity"]))
 		_ammo_reserve.append(int(WEAPON_DATA[index]["starting_reserve"]))
 		_create_weapon(index)
 	select_weapon(0, true)
+
+
+func get_web_origin_viewport_uv(side: int) -> Vector2:
+	var fallback := Vector2(0.37, 0.82) if side == 0 else Vector2(0.63, 0.82)
+	if _weapon_models.size() <= 3:
+		return fallback
+	var arm_name := "LeftArm" if side == 0 else "RightArm"
+	var origin := _weapon_models[3].get_node_or_null(arm_name + "/WebOrigin") as Node3D
+	var viewmodel_camera := get_viewport().get_camera_3d()
+	var viewport_size := Vector2(get_viewport().get_visible_rect().size)
+	if origin == null or viewmodel_camera == null or viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return fallback
+	return viewmodel_camera.unproject_position(origin.global_position) / viewport_size
 
 
 func _process(delta: float) -> void:
