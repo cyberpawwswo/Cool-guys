@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" uid="uid://cerw5dsrvesfx" path="res://scenes/ui/pause_menu/PauseMenu.tscn" id="2_dovo2"]
 [ext_resource type="Script" uid="uid://ff5cr1c4rnjo" path="res://scenes/player/weapon_manager.gd" id="2_weapon"]
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu/PauseMenuBW.tscn" id="3_bwmenu"]
+
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_0x52n"]
 
 [sub_resource type="Environment" id="Environment_viewmodel"]
@@ -28,6 +29,9 @@ void fragment() {
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_grayscale"]
 shader = SubResource("Shader_grayscale")
+shader_parameter/vignette_strength = 0.7
+shader_parameter/vignette_start = 0.3
+shader_parameter/vignette_end = 0.85
 
 [node name="Player" type="CharacterBody3D" unique_id=1040782523 groups=["glow_body"]]
 script = ExtResource("1_8afob")
@@ -64,7 +68,7 @@ stretch = true
 own_world_3d = true
 transparent_bg = true
 handle_input_locally = false
-size = Vector2i(1152, 648)
+size = Vector2i(1920, 1080)
 render_target_update_mode = 4
 
 [node name="ViewmodelCamera" type="Camera3D" parent="Control/ViewmodelContainer/ViewmodelViewport" unique_id=1628163763]
@@ -107,6 +111,21 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(1, 1, 1, 0.62352943)
 
+[node name="ColorRect2" type="ColorRect" parent="Control" unique_id=1037689659]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -1.0
+offset_top = -0.75
+offset_right = 1.0
+offset_bottom = 0.75
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.92941177, 0, 0, 1)
+
 [node name="WeaponLabel" type="Label" parent="Control" unique_id=248000716]
 layout_mode = 0
 offset_left = 24.0
@@ -120,7 +139,39 @@ theme_override_constants/shadow_offset_y = 2
 theme_override_font_sizes/font_size = 22
 text = "1  Boomstick"
 
-[node name="AmmoLabel" type="Label" parent="Control"]
+[node name="MessageLabel" type="Label" parent="Control" unique_id=988776543]
+layout_mode = 0
+offset_left = 24.0
+offset_top = 60.0
+offset_right = 700.0
+offset_bottom = 96.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.4, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 22
+text = ""
+visible = false
+
+[node name="HealthLabel" type="Label" parent="Control" unique_id=1095065922]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -92.0
+offset_right = 245.0
+offset_bottom = -34.0
+grow_vertical = 0
+theme_override_colors/font_color = Color(1, 0.55, 0.45, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_constants/shadow_offset_x = 2
+theme_override_constants/shadow_offset_y = 2
+theme_override_font_sizes/font_size = 30
+text = "100 / 100"
+
+[node name="AmmoLabel" type="Label" parent="Control" unique_id=1137412606]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -163,22 +214,18 @@ horizontal_alignment = 2
 [node name="Node3D" type="Node3D" parent="." unique_id=508049726]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.51845044, -0.97542)
 
-[node name="Effects" type="CanvasLayer" parent="."]
-layer = 1
+[node name="Effects" type="CanvasLayer" parent="." unique_id=343395711]
 
-[node name="GrayFilter" type="ColorRect" parent="Effects"]
+[node name="GrayFilter" type="ColorRect" parent="Effects" unique_id=59484917]
 material = SubResource("ShaderMaterial_grayscale")
-layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(1, 1, 1, 1)
 
-[node name="BlinkOverlay" type="ColorRect" parent="Effects"]
-layout_mode = 1
+[node name="BlinkOverlay" type="ColorRect" parent="Effects" unique_id=891047197]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -187,8 +234,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0, 0, 0, 0)
 
-[node name="ShotFlash" type="ColorRect" parent="Effects"]
-layout_mode = 1
+[node name="ShotFlash" type="ColorRect" parent="Effects" unique_id=639714374]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -197,9 +243,18 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(1, 0.78, 0.42, 0)
 
-[node name="PauseMenus" type="CanvasLayer" parent="."]
+[node name="DamageFlash" type="ColorRect" parent="Effects" unique_id=1537745493]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.72, 0.02, 0.04, 0)
+
+[node name="PauseMenus" type="CanvasLayer" parent="." unique_id=1650298243]
 layer = 2
 
 [node name="PauseMenu" parent="PauseMenus" unique_id=1650188435 instance=ExtResource("2_dovo2")]
 
-[node name="PauseMenuBW" parent="PauseMenus" instance=ExtResource("3_bwmenu")]
+[node name="PauseMenuBW" parent="PauseMenus" unique_id=2111491493 instance=ExtResource("3_bwmenu")]

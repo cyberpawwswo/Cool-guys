@@ -37,12 +37,13 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var web_extend_speed := 8.0
 @export var web_attach_pull := 7.0
 @export var web_attach_launch := 8.5
+@export var web_glow_pull_speed := 18.0
 @export var web_release_boost := 8.0
 @export var web_max_speed := 48.0
 @export var web_air_drag := 0.012
 @export var web_camera_roll_degrees := 5.0
 @export var web_fov_boost := 9.0
-@export var web_shot_speed := 135.0
+@export var web_shot_speed := 2700.0
 @export var web_visual_segments := 20
 @export var web_visual_pixel_width := 4.0
 @export var web_visual_depth := 5.0
@@ -56,6 +57,8 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var strafe_roll_degrees := 1.8
 @export var turn_roll_degrees := 1.25
 @export var sprint_fov_boost := 4.0
+@export var aim_fov := 10.0
+@export var aim_sensitivity_multiplier := 0.4
 @export var weapon_recoil_recovery := 10.0
 
 @export_category("Headbutt")
@@ -85,6 +88,17 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var bw_dash_duration := 0.3
 @export var bw_reload_speed_multiplier := 1.6
 
+@export_category("Health")
+@export var max_hp := 100.0
+@export var impact_damage_threshold := 14.0
+@export var impact_damage_multiplier := 0.8
+@export var damage_flash_intensity := 0.045
+@export var damage_flash_decay := 3.0
+@export var damage_sound_volume_db := -6.0
+
+@export_category("Modes")
+@export var creative_mode := false
+
 @export_category("Audio")
 @export var footstep_volume_db := 0.0
 @export var run_volume_db := 0.0
@@ -100,6 +114,9 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @onready var pause_menu: Control = $PauseMenus/PauseMenu
 @onready var pause_menu_bw: Control = $PauseMenus/PauseMenuBW
 @onready var crosshair: ColorRect = $Control/ColorRect
+@onready var health_label: Label = $Control/HealthLabel
+@onready var message_label: Label = $Control/MessageLabel
+@onready var damage_flash: ColorRect = $Effects/DamageFlash
 
 var _camera_start_position := Vector3.ZERO
 var _camera_start_fov := 75.0
@@ -130,6 +147,7 @@ var _jump_buffer_left := 0.0
 
 const WEB_LEFT := 0
 const WEB_RIGHT := 1
+const WEB_RAYCAST_DISTANCE := 100000.0
 var _web_states: Array[Dictionary] = [
 	{
 		"active": false,
@@ -139,6 +157,7 @@ var _web_states: Array[Dictionary] = [
 		"rope_length": 0.0,
 		"visual_progress": 0.0,
 		"visual_phase": 0.0,
+		"launch_applied": false,
 	},
 	{
 		"active": false,
@@ -148,6 +167,7 @@ var _web_states: Array[Dictionary] = [
 		"rope_length": 0.0,
 		"visual_progress": 0.0,
 		"visual_phase": 0.0,
+		"launch_applied": false,
 	},
 ]
 var _web_lines: Array[MeshInstance3D] = []
@@ -164,6 +184,14 @@ var _suppress_attack_this_frame := false
 var _black_white_mode := false
 var _blink_timer := 0.0
 var _blink_alpha := 0.0
+
+var _message_time_left := 0.0
+const _MESSAGE_DURATION := 3.0
+
+var hp := 100.0
+var _dead := false
+var _damage_flash_alpha := 0.0
+var _damage_audio_player: AudioStreamPlayer
 
 var _step_player: AudioStreamPlayer
 var _run_player: AudioStreamPlayer
@@ -188,6 +216,16 @@ func _ready() -> void:
 	_run_player = _create_audio_player("RunSound", _run_sound, run_volume_db)
 	_dash_player = _create_audio_player("DashSound", _dash_sound, dash_volume_db)
 	_headbutt_player = _create_audio_player("HeadbuttSound", _headbutt_sound, headbutt_volume_db)
+	_damage_audio_player = _create_audio_player(
+		"DamageSound",
+		_create_damage_sound(),
+		damage_sound_volume_db
+	)
+	hp = max_hp
+	if health_label:
+		health_label.text = "%d / %d" % [int(hp), int(max_hp)]
+	if damage_flash:
+		damage_flash.color.a = 0.0
 	_create_web_shooter()
 
 
@@ -207,9 +245,12 @@ func _input(event: InputEvent) -> void:
 			return
 
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		rotate_y(-event.relative.x * mouse_sensitivity)
+		var sensitivity := mouse_sensitivity
+		if Input.is_physical_key_pressed(KEY_R):
+			sensitivity *= aim_sensitivity_multiplier
+		rotate_y(-event.relative.x * sensitivity)
 		_look_pitch = clampf(
-			_look_pitch - event.relative.y * mouse_sensitivity,
+			_look_pitch - event.relative.y * sensitivity,
 			-PI / 2.2,
 			PI / 2.2
 		)
@@ -238,6 +279,25 @@ func _toggle_black_white_mode() -> void:
 			dark_mode.set_dark_mode(_black_white_mode)
 
 
+func _toggle_creative_mode() -> void:
+	creative_mode = not creative_mode
+	if creative_mode:
+		print("КРЕАТИВ: включён — дальность паутины не ограничена, урон не наносится")
+		_show_message("КРЕАТИВ: включён — дальность паутины не ограничена, урон не наносится")
+	else:
+		print("КРЕАТИВ: выключен — обычный режим")
+		_show_message("КРЕАТИВ: выключен — обычный режим")
+
+
+func _show_message(text: String) -> void:
+	if message_label == null:
+		return
+	message_label.text = text
+	message_label.modulate.a = 1.0
+	message_label.visible = true
+	_message_time_left = _MESSAGE_DURATION
+
+
 func _update_blink(delta: float) -> void:
 	if not _black_white_mode:
 		return
@@ -247,6 +307,18 @@ func _update_blink(delta: float) -> void:
 		_blink_alpha = blink_strength
 	_blink_alpha = maxf(_blink_alpha - delta * blink_fade_speed, 0.0)
 	blink_overlay.color.a = _blink_alpha
+
+
+func _update_message(delta: float) -> void:
+	if not message_label.visible:
+		return
+	_message_time_left -= delta
+	if _message_time_left <= 0.0:
+		message_label.visible = false
+		return
+	var fade_duration := 0.5
+	if _message_time_left <= fade_duration:
+		message_label.modulate.a = _message_time_left / fade_duration
 
 
 func _open_pause_menu() -> void:
@@ -284,7 +356,9 @@ func _physics_process(delta: float) -> void:
 		_update_horizontal_velocity(move_direction, delta)
 
 	var vertical_speed_before_move := velocity.y
+	var pre_velocity := velocity
 	move_and_slide()
+	_check_impact_damage(pre_velocity)
 
 	if not _was_on_floor and is_on_floor():
 		_landing_kick = clampf(absf(vertical_speed_before_move) * 0.012, 0.0, 0.085)
@@ -303,8 +377,12 @@ func _process(delta: float) -> void:
 		_release_throw()
 	if Input.is_action_just_pressed("black_white"):
 		_toggle_black_white_mode()
+	if Input.is_action_just_pressed("toggle_creative"):
+		_toggle_creative_mode()
 	_update_blink(delta)
+	_update_message(delta)
 	_update_shot_flash(delta)
+	_update_damage_flash(delta)
 	_suppress_attack_this_frame = false
 
 	var headbutt_pose := _update_headbutt(delta)
@@ -382,6 +460,84 @@ func _update_shot_flash(delta: float) -> void:
 		1.0 if _black_white_mode else 0.7,
 		_shot_flash_alpha
 	)
+
+
+func _check_impact_damage(pre_velocity: Vector3) -> void:
+	if _dead:
+		return
+	var max_approach := 0.0
+	for i in get_slide_collision_count():
+		var collision := get_slide_collision(i)
+		var normal := collision.get_normal()
+		var collider_velocity := collision.get_collider_velocity()
+		var collider := collision.get_collider()
+		if normal.y < 0.5 and not collider is RigidBody3D:
+			continue
+		var approach_speed := (collider_velocity - pre_velocity).dot(normal)
+		max_approach = maxf(max_approach, approach_speed)
+	if max_approach < impact_damage_threshold:
+		return
+	var damage := (max_approach - impact_damage_threshold) * impact_damage_multiplier
+	take_damage(damage)
+
+
+func take_damage(amount: float) -> void:
+	if _dead or amount <= 0.0:
+		return
+	if creative_mode:
+		print("КРЕАТИВ: получен урон %.1f, но в креативе здоровье не меняется" % amount)
+		return
+	hp = maxf(hp - amount, 0.0)
+	_damage_flash_alpha = clampf(
+		_damage_flash_alpha + amount * damage_flash_intensity,
+		0.0,
+		0.8
+	)
+	if _damage_audio_player:
+		_damage_audio_player.pitch_scale = randf_range(0.9, 1.05)
+		_damage_audio_player.play()
+	if health_label:
+		health_label.text = "%d / %d" % [int(ceilf(hp)), int(max_hp)]
+	if hp <= 0.0:
+		_die()
+
+
+func _die() -> void:
+	_dead = true
+	_damage_flash_alpha = 0.8
+	_release_all_webs(false)
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	get_tree().call_deferred("reload_current_scene")
+
+
+func _update_damage_flash(delta: float) -> void:
+	if not damage_flash:
+		return
+	_damage_flash_alpha = maxf(
+		_damage_flash_alpha - delta * damage_flash_decay,
+		0.0
+	)
+	damage_flash.color.a = clampf(_damage_flash_alpha, 0.0, 0.8)
+
+
+func _create_damage_sound() -> AudioStreamWAV:
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = 22050
+	stream.stereo = false
+	var sample_count := int(stream.mix_rate * 0.25)
+	var data := PackedByteArray()
+	data.resize(sample_count * 2)
+	var phase := 0.0
+	for sample_index in sample_count:
+		var progress := float(sample_index) / float(sample_count)
+		var frequency := lerpf(160.0, 45.0, progress)
+		phase += TAU * frequency / float(stream.mix_rate)
+		var envelope := (1.0 - progress) * (1.0 - progress)
+		var value := clampf(sin(phase) * envelope, -1.0, 1.0)
+		data.encode_s16(sample_index * 2, int(value * 22000.0))
+	stream.data = data
+	return stream
 
 
 func _update_timers(delta: float) -> void:
@@ -548,7 +704,6 @@ func _find_web_anchor(side := WEB_LEFT) -> Dictionary:
 			continue
 		var point: Vector3 = hit.position
 		var height := point.y - global_position.y
-		var distance := origin.distance_to(point)
 		var horizontal_direction := Vector3(direction.x, 0.0, direction.z).normalized()
 		var center_proximity := 1.0 - clampf(offset.length() / 0.52, 0.0, 1.0)
 		var score := (
@@ -557,7 +712,6 @@ func _find_web_anchor(side := WEB_LEFT) -> Dictionary:
 			+ clampf(height / 25.0, -1.0, 1.0) * 0.35
 			+ horizontal_direction.dot(travel_direction) * 0.25
 			+ maxf(offset.x * side_sign, 0.0) * 0.12
-			- distance / web_range * 0.18
 		)
 		if score > best_score:
 			best_score = score
@@ -568,22 +722,52 @@ func _find_web_anchor(side := WEB_LEFT) -> Dictionary:
 func _raycast_web_anchor(origin: Vector3, direction: Vector3) -> Dictionary:
 	var query := PhysicsRayQueryParameters3D.create(
 		origin,
-		origin + direction * web_range
+		origin + direction * _get_web_raycast_distance()
 	)
 	query.exclude = [get_rid()]
 	query.collide_with_areas = false
 	return get_world_3d().direct_space_state.intersect_ray(query)
 
 
-func _is_valid_web_anchor(hit: Dictionary) -> bool:
-	if hit.is_empty() or not hit.collider is StaticBody3D:
+func _get_web_raycast_distance() -> float:
+	if creative_mode:
+		return WEB_RAYCAST_DISTANCE
+	return web_range
+
+
+func _is_web_anchor_behind_camera(anchor: Vector3) -> bool:
+	var to_anchor := anchor - camera.global_position
+	if to_anchor.length_squared() < 0.0001:
 		return false
-	var point: Vector3 = hit.position
-	var minimum_height := web_min_anchor_height if is_on_floor() else -web_air_anchor_drop
-	return point.y - global_position.y >= minimum_height
+	return to_anchor.normalized().dot(-camera.global_basis.z) < 0.0
+
+
+func _is_valid_web_anchor(hit: Dictionary) -> bool:
+	if hit.is_empty():
+		return false
+	if _is_web_anchor_behind_camera(hit.position):
+		return false
+	if hit.collider is StaticBody3D:
+		var point: Vector3 = hit.position
+		var minimum_height := web_min_anchor_height if is_on_floor() else -web_air_anchor_drop
+		return point.y - global_position.y >= minimum_height
+	return _find_glow_rigid_body(hit.collider) != null
+
+
+func _find_glow_rigid_body(collider: Node) -> RigidBody3D:
+	var node: Node = collider
+	while node:
+		if node.is_in_group("glow_body"):
+			return node as RigidBody3D
+		node = node.get_parent()
+	return null
 
 
 func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
+	var glow_body := _find_glow_rigid_body(hit.collider)
+	if glow_body:
+		_pull_glow_body(glow_body, side)
+		return
 	var state := _web_states[side]
 	var anchor: Vector3 = hit.position
 	var anchor_body := hit.collider as Node3D
@@ -607,8 +791,22 @@ func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
 	state["active"] = true
 	state["visual_progress"] = 0.0
 	state["visual_phase"] = randf_range(0.0, TAU)
+	state["launch_applied"] = false
 	_web_states[side] = state
 	_dash_time_left = 0.0
+	crosshair.color = Color(0.38, 0.9, 1.0, 1.0)
+	_web_lines[side].visible = true
+	_web_anchor_markers[side].visible = true
+	if _web_audio_player:
+		_web_audio_player.pitch_scale = randf_range(0.94, 1.02) if side == WEB_LEFT else randf_range(1.04, 1.12)
+		_web_audio_player.play()
+
+
+func _apply_web_attach_launch(side: int) -> void:
+	var state := _web_states[side]
+	if bool(state["launch_applied"]):
+		return
+	var anchor: Vector3 = state["anchor"]
 	var pull_direction := (anchor - global_position).normalized()
 	velocity += pull_direction * web_attach_pull
 	var launch_direction := (-camera.global_basis.z).slide(pull_direction)
@@ -620,12 +818,27 @@ func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
 	velocity += launch_direction * web_attach_launch
 	if is_on_floor():
 		velocity.y = maxf(velocity.y, jump_velocity * 1.15)
-	crosshair.color = Color(0.38, 0.9, 1.0, 1.0)
-	_web_lines[side].visible = true
-	_web_anchor_markers[side].visible = true
+	state["launch_applied"] = true
+	_web_states[side] = state
+
+
+func _pull_glow_body(glow_body: RigidBody3D, side: int) -> void:
+	var pull_direction := (global_position - glow_body.global_position).normalized()
+	var delta_velocity := pull_direction * web_glow_pull_speed - glow_body.linear_velocity
+	glow_body.apply_central_impulse(delta_velocity * glow_body.mass)
+	crosshair.color = Color(1.0, 1.0, 1.0, 1.0)
 	if _web_audio_player:
-		_web_audio_player.pitch_scale = randf_range(0.94, 1.02) if side == WEB_LEFT else randf_range(1.04, 1.12)
+		_web_audio_player.pitch_scale = (
+			randf_range(1.1, 1.3) if side == WEB_LEFT else randf_range(1.3, 1.5)
+		)
 		_web_audio_player.play()
+
+
+func _webs_fully_attached() -> bool:
+	for side in 2:
+		if bool(_web_states[side]["active"]) and float(_web_states[side]["visual_progress"]) < 1.0:
+			return false
+	return true
 
 
 func _release_web(side: int, boosted := false) -> void:
@@ -680,6 +893,12 @@ func _refresh_web_anchor(side: int) -> bool:
 
 
 func _update_web_swing(move_direction: Vector3, delta: float) -> void:
+	if not _webs_fully_attached():
+		_update_horizontal_velocity(move_direction, delta)
+		return
+	for side in 2:
+		if bool(_web_states[side]["active"]):
+			_apply_web_attach_launch(side)
 	var active_sides: Array[int] = []
 	var combined_radial := Vector3.ZERO
 	for side in 2:
@@ -688,7 +907,7 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 		var anchor: Vector3 = _web_states[side]["anchor"]
 		var to_anchor := anchor - global_position
 		var distance := to_anchor.length()
-		if distance < 0.01 or distance > web_range * 1.35:
+		if distance < 0.01 or _is_web_anchor_behind_camera(anchor):
 			_release_web(side, false)
 			continue
 		active_sides.append(side)
@@ -738,7 +957,7 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 		elif wants_to_brake:
 			rope_length = minf(
 				rope_length + web_extend_speed * delta,
-				minf(web_range, distance * 1.08)
+				distance * 1.08
 			)
 		state["rope_length"] = rope_length
 		_web_states[side] = state
@@ -1262,18 +1481,21 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 	)
 
 	var target_fov := _camera_start_fov
-	if Input.is_action_pressed("sprint") and _move_input.y < 0.0:
-		target_fov += sprint_fov_boost * speed_ratio
-	if _dash_time_left > 0.0:
-		target_fov += dash_fov_boost
-	if _has_active_web():
-		var web_speed_ratio := clampf(
-			(horizontal_speed - sprint_speed) / (web_max_speed - sprint_speed),
-			0.0,
-			1.0
-		)
-		target_fov += web_fov_boost * web_speed_ratio
-	target_fov += _weapon_recoil_fov
+	if Input.is_physical_key_pressed(KEY_R):
+		target_fov = aim_fov
+	else:
+		if Input.is_action_pressed("sprint") and _move_input.y < 0.0:
+			target_fov += sprint_fov_boost * speed_ratio
+		if _dash_time_left > 0.0:
+			target_fov += dash_fov_boost
+		if _has_active_web():
+			var web_speed_ratio := clampf(
+				(horizontal_speed - sprint_speed) / (web_max_speed - sprint_speed),
+				0.0,
+				1.0
+			)
+			target_fov += web_fov_boost * web_speed_ratio
+		target_fov += _weapon_recoil_fov
 	camera.fov = lerpf(camera.fov, target_fov, _exp_weight(8.0, delta))
 
 	var recoil_recovery := _exp_weight(weapon_recoil_recovery, delta)
