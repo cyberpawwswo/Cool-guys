@@ -1,0 +1,32 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/maps/big_city/big_city.glb" id="1_model"]
+[ext_resource type="PackedScene" path="res://scenes/levels/big_city/big_city_collision.scn" id="2_collision"]
+[ext_resource type="Script" path="res://scenes/levels/big_city/big_city_map.gd" id="3_script"]
+
+[sub_resource type="StandardMaterial3D" id="SafetyMaterial"]
+albedo_color = Color(0.12, 0.13, 0.14, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="SafetyMesh"]
+material = SubResource("SafetyMaterial")
+size = Vector3(720, 0.5, 720)
+
+[sub_resource type="BoxShape3D" id="SafetyShape"]
+size = Vector3(720, 0.5, 720)
+
+[node name="BigCityMap" type="Node3D"]
+script = ExtResource("3_script")
+
+[node name="Model" parent="." instance=ExtResource("1_model")]
+
+[node name="Collision" parent="." instance=ExtResource("2_collision")]
+
+[node name="SafetyUnderlay" type="StaticBody3D" parent="."]
+position = Vector3(-165, -2.25, -180)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="SafetyUnderlay"]
+mesh = SubResource("SafetyMesh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="SafetyUnderlay"]
+shape = SubResource("SafetyShape")

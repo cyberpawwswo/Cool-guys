@@ -6,7 +6,7 @@
 [ext_resource type="Script" uid="uid://bix1xspyl8o1e" path="res://resource/destoy/presets/destroy_settings.gd" id="2_lbjl6"]
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
 [ext_resource type="Script" uid="uid://klr045vqhbbu" path="res://scenes/levels/test_level/dark_mode.gd" id="6_darkmode"]
-[ext_resource type="PackedScene" path="res://scenes/levels/office/office_map.tscn" id="7_office"]
+[ext_resource type="PackedScene" path="res://scenes/levels/big_city/big_city_map.tscn" id="7_map"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i0vk3"]
 resource_local_to_scene = true
@@ -36,6 +36,7 @@ background_mode = 2
 sky = SubResource("Sky_62kbb")
 ambient_light_source = 2
 ambient_light_color = Color(0.08, 0.08, 0.1, 1)
+ambient_light_energy = 0.75
 
 [sub_resource type="Resource" id="Resource_6eemo"]
 script = ExtResource("2_lbjl6")
@@ -76,8 +77,10 @@ sun = NodePath("../DirectionalLight3D")
 environment = SubResource("Environment_uxvkn")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2026878185]
-transform = Transform3D(-0.8660254, -0.43301278, 0.25, 0, 0.49999997, 0.86602545, -0.50000006, 0.75, -0.43301266, 0, 0, 0)
+rotation = Vector3(-0.959931, -0.610865, 0)
+light_energy = 1.35
 shadow_enabled = true
+shadow_opacity = 0.65
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=2027440389]
 environment = SubResource("Environment_uxvkn")
@@ -131,16 +134,17 @@ surface_material_override/0 = SubResource("StandardMaterial3D_i0vk3")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="MeshInstance3D5/StaticBody3D" unique_id=1355618304]
 shape = SubResource("ConcavePolygonShape3D_2wufs")
-[node name="OfficeMap" parent="." instance=ExtResource("7_office")]
+
+[node name="BigCityMap" parent="." instance=ExtResource("7_map")]
 
 [node name="Player" parent="." unique_id=1040782523 instance=ExtResource("1_i0vk3")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -160, 2, -180)
 
 [node name="RigidBody3D" parent="." unique_id=1909331113 instance=ExtResource("4_uxvkn")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0630054, 4.6511745)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -154, 2.0630054, -192)
 
 [node name="RigidBody3D2" type="RigidBody3D" parent="." unique_id=574013931 groups=["glow_body"]]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1619954, 2.214091)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -166, 2.1619954, -190)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="RigidBody3D2" unique_id=853901138]
 shape = SubResource("BoxShape3D_0x52n")

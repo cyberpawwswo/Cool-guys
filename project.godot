@@ -19,7 +19,6 @@ config/icon="res://icon.svg"
 
 Config="*uid://8mckxp2b1rh"
 GlowManager="*res://scenes/glow/glow_manager.gd"
-DestructionManager="*res://scenes/destruction/destruction_manager.gd"
 
 [display]
 
