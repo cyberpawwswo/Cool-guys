@@ -66,6 +66,27 @@ func _run_test() -> void:
 		_fail("web rope lengths were not initialized")
 		return
 
+	player._update_web_visual(0.25)
+	for side in 2:
+		var web_mesh := player._web_lines[side].mesh as ImmediateMesh
+		if web_mesh.get_surface_count() == 0:
+			_fail("detailed web mesh was not generated")
+			return
+		if not player._web_lines[side].global_transform.is_finite():
+			_fail("web mesh produced an invalid transform")
+			return
+	var old_left_origin: Vector3 = player._web_lines[player.WEB_LEFT].global_position
+	player.camera.position += Vector3(0.35, 0.18, -0.12)
+	player.camera.rotation.y += 0.08
+	player._update_web_visual(1.0 / 60.0)
+	var expected_left_origin: Vector3 = player._get_web_hand_position(player.WEB_LEFT)
+	if not player._web_lines[player.WEB_LEFT].global_position.is_equal_approx(expected_left_origin):
+		_fail("web start did not follow the camera hand position")
+		return
+	if player._web_lines[player.WEB_LEFT].global_position.is_equal_approx(old_left_origin):
+		_fail("web start remained stuck after camera movement")
+		return
+
 	player.velocity = Vector3(10.0, -3.0, -6.0)
 	player._update_web_swing(Vector3.RIGHT, 1.0 / 60.0)
 	if player.velocity.length() > player.web_max_speed + 0.01:

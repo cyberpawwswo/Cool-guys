@@ -36,6 +36,9 @@ var _headbutt_sound := preload("res://assets/audio/player/headbut.mp3")
 @export var web_air_drag := 0.035
 @export var web_camera_roll_degrees := 5.0
 @export var web_fov_boost := 9.0
+@export var web_shot_speed := 135.0
+@export var web_visual_segments := 20
+@export var web_visual_radius := 0.026
 
 @export_category("Camera")
 @export var mouse_sensitivity := 0.005
@@ -127,6 +130,8 @@ var _web_states: Array[Dictionary] = [
 		"body": null,
 		"local_anchor": Vector3.ZERO,
 		"rope_length": 0.0,
+		"visual_progress": 0.0,
+		"visual_phase": 0.0,
 	},
 	{
 		"active": false,
@@ -134,6 +139,8 @@ var _web_states: Array[Dictionary] = [
 		"body": null,
 		"local_anchor": Vector3.ZERO,
 		"rope_length": 0.0,
+		"visual_progress": 0.0,
+		"visual_phase": 0.0,
 	},
 ]
 var _web_lines: Array[MeshInstance3D] = []
@@ -276,7 +283,6 @@ func _physics_process(delta: float) -> void:
 		_landing_kick = clampf(absf(vertical_speed_before_move) * 0.012, 0.0, 0.085)
 	_was_on_floor = is_on_floor()
 	_update_footstep_sounds(delta)
-	_update_web_visual()
 
 
 func _process(delta: float) -> void:
@@ -296,6 +302,7 @@ func _process(delta: float) -> void:
 
 	var headbutt_pose := _update_headbutt(delta)
 	_update_camera(delta, headbutt_pose)
+	_update_web_visual(delta)
 
 
 func apply_weapon_recoil(strength: float, weapon_index := 0) -> void:
@@ -403,18 +410,14 @@ func _create_web_shooter() -> void:
 	web_material.emission_enabled = true
 	web_material.emission = Color(0.28, 0.66, 1.0)
 	web_material.emission_energy_multiplier = 1.8
+	web_material.cull_mode = BaseMaterial3D.CULL_DISABLED
 
 	var marker_mesh := SphereMesh.new()
 	marker_mesh.radius = 0.11
 	marker_mesh.height = 0.22
 	marker_mesh.material = web_material
 	for side in 2:
-		var line_mesh := CylinderMesh.new()
-		line_mesh.top_radius = 0.028
-		line_mesh.bottom_radius = 0.028
-		line_mesh.height = 1.0
-		line_mesh.radial_segments = 8
-		line_mesh.material = web_material
+		var line_mesh := ImmediateMesh.new()
 		var line := MeshInstance3D.new()
 		line.name = "LeftWebLine" if side == WEB_LEFT else "RightWebLine"
 		line.mesh = line_mesh
@@ -571,6 +574,8 @@ func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
 		)
 	state["rope_length"] = maxf(desired_rope_length, web_min_rope_length)
 	state["active"] = true
+	state["visual_progress"] = 0.0
+	state["visual_phase"] = randf_range(0.0, TAU)
 	_web_states[side] = state
 	_dash_time_left = 0.0
 	var pull_direction := (anchor - global_position).normalized()
@@ -592,6 +597,8 @@ func _release_web(side: int, boosted := false) -> void:
 	state["active"] = false
 	state["body"] = null
 	_web_states[side] = state
+	var line_mesh := _web_lines[side].mesh as ImmediateMesh
+	line_mesh.clear_surfaces()
 	_web_lines[side].visible = false
 	_web_anchor_markers[side].visible = false
 	if boosted:
@@ -687,30 +694,154 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 		velocity = velocity.normalized() * web_max_speed
 
 
-func _update_web_visual() -> void:
+func _get_web_hand_position(side: int) -> Vector3:
+	var hand_offset := -0.28 if side == WEB_LEFT else 0.28
+	return camera.global_position + camera.global_basis * Vector3(
+		hand_offset,
+		-0.2,
+		-0.42
+	)
+
+
+func _update_web_visual(delta: float) -> void:
 	for side in 2:
 		if not bool(_web_states[side]["active"]) or not _refresh_web_anchor(side):
 			continue
-		var hand_offset := -0.28 if side == WEB_LEFT else 0.28
-		var line_start := camera.global_position + (
-			camera.global_transform.basis * Vector3(
-				hand_offset,
-				-0.2,
-				-0.42
-			)
-		)
-		var anchor: Vector3 = _web_states[side]["anchor"]
-		var line_vector := anchor - line_start
-		var line_length := line_vector.length()
-		if line_length < 0.01:
+		var state := _web_states[side]
+		var line_start := _get_web_hand_position(side)
+		var anchor: Vector3 = state["anchor"]
+		var full_length := line_start.distance_to(anchor)
+		if full_length < 0.05:
 			continue
-		var line_mesh := _web_lines[side].mesh as CylinderMesh
-		line_mesh.height = line_length
-		_web_lines[side].global_transform = Transform3D(
-			Basis(Quaternion(Vector3.UP, line_vector / line_length)),
-			line_start + line_vector * 0.5
+		state["visual_progress"] = minf(
+			float(state["visual_progress"]) + web_shot_speed * delta / full_length,
+			1.0
 		)
+		state["visual_phase"] = fmod(float(state["visual_phase"]) + delta * 3.2, TAU)
+		_web_states[side] = state
+		var visible_anchor := line_start.lerp(
+			anchor,
+			_smoothstep(float(state["visual_progress"]))
+		)
+		var points := _build_web_curve(
+			line_start,
+			visible_anchor,
+			state,
+			side
+		)
+		var line_mesh := _web_lines[side].mesh as ImmediateMesh
+		_build_web_mesh(line_mesh, points, float(state["visual_phase"]), side)
+		_web_lines[side].global_transform = Transform3D(Basis.IDENTITY, line_start)
 		_web_anchor_markers[side].global_position = anchor
+		var marker_scale := lerpf(0.15, 1.0, float(state["visual_progress"]))
+		_web_anchor_markers[side].scale = Vector3.ONE * marker_scale
+
+
+func _build_web_curve(
+	line_start: Vector3,
+	visible_anchor: Vector3,
+	state: Dictionary,
+	side: int
+) -> PackedVector3Array:
+	var points := PackedVector3Array()
+	var relative_end := visible_anchor - line_start
+	var distance := relative_end.length()
+	var segment_count := maxi(web_visual_segments, 6)
+	var launch_amount := 1.0 - float(state["visual_progress"])
+	var slack: float = maxf(
+		float(state["rope_length"]) - global_position.distance_to(state["anchor"]),
+		0.0
+	)
+	var sag := clampf(distance * 0.012 + slack * 0.2, 0.03, 0.7)
+	var side_sign := -1.0 if side == WEB_LEFT else 1.0
+	var lateral := camera.global_basis.x * side_sign
+	for point_index in range(segment_count + 1):
+		var t := float(point_index) / float(segment_count)
+		var point := relative_end * t
+		var envelope := sin(PI * t)
+		point.y -= sag * envelope
+		point += lateral * (
+			sin(t * TAU * 2.0 + float(state["visual_phase"]))
+			* envelope
+			* launch_amount
+			* 0.12
+		)
+		points.append(point)
+	return points
+
+
+func _build_web_mesh(
+	mesh: ImmediateMesh,
+	core_points: PackedVector3Array,
+	phase: float,
+	side: int
+) -> void:
+	mesh.clear_surfaces()
+	if core_points.size() < 2:
+		return
+	var web_material := (_web_anchor_markers[side].mesh as SphereMesh).material
+	mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES, web_material)
+	_append_web_tube(mesh, core_points, web_visual_radius, 7)
+	for strand_index in 2:
+		var strand_points := PackedVector3Array()
+		for point_index in core_points.size():
+			var tangent := _web_curve_tangent(core_points, point_index)
+			var frame := _web_curve_frame(tangent)
+			var t := float(point_index) / float(core_points.size() - 1)
+			var angle := t * TAU * 9.0 + phase + PI * float(strand_index)
+			var offset := (
+				frame[0] * cos(angle) + frame[1] * sin(angle)
+			) * web_visual_radius * 1.35
+			strand_points.append(core_points[point_index] + offset)
+		_append_web_tube(mesh, strand_points, web_visual_radius * 0.28, 4)
+	mesh.surface_end()
+
+
+func _append_web_tube(
+	mesh: ImmediateMesh,
+	points: PackedVector3Array,
+	radius: float,
+	sides: int
+) -> void:
+	for point_index in range(points.size() - 1):
+		var tangent_a := _web_curve_tangent(points, point_index)
+		var tangent_b := _web_curve_tangent(points, point_index + 1)
+		var frame_a := _web_curve_frame(tangent_a)
+		var frame_b := _web_curve_frame(tangent_b)
+		for radial_index in sides:
+			var next_radial := (radial_index + 1) % sides
+			var angle_a := TAU * float(radial_index) / float(sides)
+			var angle_b := TAU * float(next_radial) / float(sides)
+			var normal_a0: Vector3 = frame_a[0] * cos(angle_a) + frame_a[1] * sin(angle_a)
+			var normal_a1: Vector3 = frame_a[0] * cos(angle_b) + frame_a[1] * sin(angle_b)
+			var normal_b0: Vector3 = frame_b[0] * cos(angle_a) + frame_b[1] * sin(angle_a)
+			var normal_b1: Vector3 = frame_b[0] * cos(angle_b) + frame_b[1] * sin(angle_b)
+			_add_web_vertex(mesh, points[point_index] + normal_a0 * radius, normal_a0)
+			_add_web_vertex(mesh, points[point_index + 1] + normal_b0 * radius, normal_b0)
+			_add_web_vertex(mesh, points[point_index + 1] + normal_b1 * radius, normal_b1)
+			_add_web_vertex(mesh, points[point_index] + normal_a0 * radius, normal_a0)
+			_add_web_vertex(mesh, points[point_index + 1] + normal_b1 * radius, normal_b1)
+			_add_web_vertex(mesh, points[point_index] + normal_a1 * radius, normal_a1)
+
+
+func _add_web_vertex(mesh: ImmediateMesh, position: Vector3, normal: Vector3) -> void:
+	mesh.surface_set_normal(normal)
+	mesh.surface_add_vertex(position)
+
+
+func _web_curve_tangent(points: PackedVector3Array, point_index: int) -> Vector3:
+	var previous_index := maxi(point_index - 1, 0)
+	var next_index := mini(point_index + 1, points.size() - 1)
+	var tangent := points[next_index] - points[previous_index]
+	return tangent.normalized() if tangent.length_squared() > 0.000001 else Vector3.FORWARD
+
+
+func _web_curve_frame(tangent: Vector3) -> Array[Vector3]:
+	var side_axis := tangent.cross(Vector3.UP)
+	if side_axis.length_squared() < 0.0001:
+		side_axis = tangent.cross(Vector3.RIGHT)
+	side_axis = side_axis.normalized()
+	return [side_axis, side_axis.cross(tangent).normalized()]
 
 
 func _get_web_focus_anchor() -> Vector3:
