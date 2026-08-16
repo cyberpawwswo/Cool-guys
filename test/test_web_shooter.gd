@@ -80,16 +80,56 @@ func _run_test() -> void:
 	):
 		_fail("web rope lengths were not initialized")
 		return
+	player.velocity = Vector3.ZERO
+	player._move_input = Vector2.ZERO
+	var combined_anchor_direction := Vector3.ZERO
+	for side in 2:
+		combined_anchor_direction += (
+			player._web_states[side]["anchor"] - player.global_position
+		).normalized()
+	combined_anchor_direction = combined_anchor_direction.normalized()
+	for frame in 12:
+		player._update_web_swing(Vector3.ZERO, 1.0 / 60.0)
+	var pull_speed: float = player.velocity.dot(combined_anchor_direction)
+	var assisted_tangent_speed: float = player.velocity.slide(
+		combined_anchor_direction
+	).length()
+	if pull_speed < 3.0:
+		_fail("web swing did not actively pull the player toward its anchors")
+		return
+	if assisted_tangent_speed < 3.0:
+		_fail("web swing did not create assisted forward momentum")
+		return
+	var rope_length_before_reel: float = player._web_states[player.WEB_LEFT]["rope_length"]
+	player._move_input = Vector2(0.0, -1.0)
+	player._update_web_swing(-player.global_basis.z, 0.2)
+	if player._web_states[player.WEB_LEFT]["rope_length"] >= rope_length_before_reel:
+		_fail("holding forward did not reel in the web")
+		return
+	player._move_input = Vector2.ZERO
 
 	player._update_web_visual(0.25)
 	for side in 2:
 		var web_mesh := player._web_lines[side].mesh as ImmediateMesh
+		if player._web_lines[side].get_viewport() != manager.get_viewport():
+			_fail("web ribbon is not rendered in the viewmodel viewport")
+			return
 		if web_mesh.get_surface_count() == 0:
 			_fail("detailed web mesh was not generated")
 			return
 		if not player._web_lines[side].global_transform.is_finite():
 			_fail("web mesh produced an invalid transform")
 			return
+	var root_viewport_size := Vector2(player.get_viewport().get_visible_rect().size)
+	var anchor: Vector3 = player._web_states[player.WEB_LEFT]["anchor"]
+	var anchor_uv: Vector2 = player.camera.unproject_position(anchor) / root_viewport_size
+	var visual_target: Vector3 = manager.get_web_visual_target(anchor_uv, player.web_visual_depth)
+	var viewmodel_camera: Camera3D = manager.get_viewmodel_camera()
+	var viewmodel_size := Vector2(viewmodel_camera.get_viewport().get_visible_rect().size)
+	var visual_target_uv := viewmodel_camera.unproject_position(visual_target) / viewmodel_size
+	if visual_target_uv.distance_to(anchor_uv) > 0.001:
+		_fail("viewmodel web target does not converge on the world anchor on screen")
+		return
 	var old_left_origin: Vector3 = player._web_lines[player.WEB_LEFT].global_position
 	player.camera.position += Vector3(0.35, 0.18, -0.12)
 	player.camera.rotation.y += 0.08

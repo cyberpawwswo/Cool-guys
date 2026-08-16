@@ -204,15 +204,36 @@ func _ready() -> void:
 
 func get_web_origin_viewport_uv(side: int) -> Vector2:
 	var fallback := Vector2(0.37, 0.82) if side == 0 else Vector2(0.63, 0.82)
-	if _weapon_models.size() <= 3:
-		return fallback
-	var arm_name := "LeftArm" if side == 0 else "RightArm"
-	var origin := _weapon_models[3].get_node_or_null(arm_name + "/WebOrigin") as Node3D
+	var origin := get_web_origin_node(side)
 	var viewmodel_camera := get_viewport().get_camera_3d()
 	var viewport_size := Vector2(get_viewport().get_visible_rect().size)
 	if origin == null or viewmodel_camera == null or viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
 		return fallback
 	return viewmodel_camera.unproject_position(origin.global_position) / viewport_size
+
+
+func get_web_origin_node(side: int) -> Node3D:
+	if _weapon_models.size() <= 3:
+		return null
+	var arm_name := "LeftArm" if side == 0 else "RightArm"
+	return _weapon_models[3].get_node_or_null(arm_name + "/WebOrigin") as Node3D
+
+
+func get_web_origin_global_position(side: int) -> Vector3:
+	var origin := get_web_origin_node(side)
+	return origin.global_position if origin else Vector3.ZERO
+
+
+func get_web_visual_target(viewport_uv: Vector2, depth: float) -> Vector3:
+	var viewmodel_camera := get_viewport().get_camera_3d()
+	if viewmodel_camera == null:
+		return Vector3(0.0, 0.0, -depth)
+	var viewport_size := Vector2(get_viewport().get_visible_rect().size)
+	return viewmodel_camera.project_position(viewport_uv * viewport_size, depth)
+
+
+func get_viewmodel_camera() -> Camera3D:
+	return get_viewport().get_camera_3d()
 
 
 func _process(delta: float) -> void:
