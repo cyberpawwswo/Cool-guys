@@ -118,14 +118,26 @@ var _dash_direction := Vector3.ZERO
 var _coyote_time_left := 0.0
 var _jump_buffer_left := 0.0
 
-var _web_active := false
-var _web_anchor := Vector3.ZERO
-var _web_anchor_body: Node3D = null
-var _web_anchor_local := Vector3.ZERO
-var _web_rope_length := 0.0
-var _web_hand_side := 1.0
-var _web_line: MeshInstance3D
-var _web_anchor_marker: MeshInstance3D
+const WEB_LEFT := 0
+const WEB_RIGHT := 1
+var _web_states: Array[Dictionary] = [
+	{
+		"active": false,
+		"anchor": Vector3.ZERO,
+		"body": null,
+		"local_anchor": Vector3.ZERO,
+		"rope_length": 0.0,
+	},
+	{
+		"active": false,
+		"anchor": Vector3.ZERO,
+		"body": null,
+		"local_anchor": Vector3.ZERO,
+		"rope_length": 0.0,
+	},
+]
+var _web_lines: Array[MeshInstance3D] = []
+var _web_anchor_markers: Array[MeshInstance3D] = []
 var _web_audio_player: AudioStreamPlayer
 
 var _headbutt_time := -1.0
@@ -245,10 +257,10 @@ func _physics_process(delta: float) -> void:
 	).normalized()
 	_handle_web_input()
 
-	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0 and not _web_active:
+	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0 and not _has_active_web():
 		_start_dash(move_direction)
 
-	if _web_active:
+	if _has_active_web():
 		_update_web_swing(move_direction, delta)
 	elif _dash_time_left > 0.0:
 		var current_dash_speed := bw_dash_speed if _black_white_mode else dash_speed
@@ -269,8 +281,7 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	if Input.is_action_just_pressed("attack") and not _suppress_attack_this_frame:
-		
-		if weapon_manager.play_attack():
+		if not weapon_manager.is_web_shooter_selected() and weapon_manager.play_attack():
 			_perform_attack()
 	if Input.is_action_just_pressed("strong_attack"):
 		if _headbutt_time < 0.0 and not _try_grab():
@@ -393,36 +404,40 @@ func _create_web_shooter() -> void:
 	web_material.emission = Color(0.28, 0.66, 1.0)
 	web_material.emission_energy_multiplier = 1.8
 
-	var line_mesh := CylinderMesh.new()
-	line_mesh.top_radius = 0.028
-	line_mesh.bottom_radius = 0.028
-	line_mesh.height = 1.0
-	line_mesh.radial_segments = 8
-	line_mesh.material = web_material
-	_web_line = MeshInstance3D.new()
-	_web_line.name = "WebLine"
-	_web_line.mesh = line_mesh
-	_web_line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_web_line.visible = false
-	add_child(_web_line)
-	_web_line.top_level = true
-
 	var marker_mesh := SphereMesh.new()
 	marker_mesh.radius = 0.11
 	marker_mesh.height = 0.22
 	marker_mesh.material = web_material
-	_web_anchor_marker = MeshInstance3D.new()
-	_web_anchor_marker.name = "WebAnchor"
-	_web_anchor_marker.mesh = marker_mesh
-	_web_anchor_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_web_anchor_marker.visible = false
-	add_child(_web_anchor_marker)
-	_web_anchor_marker.top_level = true
+	for side in 2:
+		var line_mesh := CylinderMesh.new()
+		line_mesh.top_radius = 0.028
+		line_mesh.bottom_radius = 0.028
+		line_mesh.height = 1.0
+		line_mesh.radial_segments = 8
+		line_mesh.material = web_material
+		var line := MeshInstance3D.new()
+		line.name = "LeftWebLine" if side == WEB_LEFT else "RightWebLine"
+		line.mesh = line_mesh
+		line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		line.visible = false
+		add_child(line)
+		line.top_level = true
+		_web_lines.append(line)
+
+		var marker := MeshInstance3D.new()
+		marker.name = "LeftWebAnchor" if side == WEB_LEFT else "RightWebAnchor"
+		marker.mesh = marker_mesh
+		marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		marker.visible = false
+		add_child(marker)
+		marker.top_level = true
+		_web_anchor_markers.append(marker)
 
 	_web_audio_player = AudioStreamPlayer.new()
 	_web_audio_player.name = "WebShooterSound"
 	_web_audio_player.stream = _create_web_sound()
 	_web_audio_player.volume_db = -4.0
+	_web_audio_player.max_polyphony = 4
 	add_child(_web_audio_player)
 
 
@@ -448,29 +463,49 @@ func _create_web_sound() -> AudioStreamWAV:
 
 
 func _handle_web_input() -> void:
-	if Input.is_action_just_pressed("web_swing"):
-		var hit := _find_web_anchor()
-		if not hit.is_empty():
-			_attach_web(hit)
-		else:
-			crosshair.color = Color(1.0, 0.28, 0.22, 0.9)
-	if not _web_active:
+	if not weapon_manager.is_web_shooter_selected():
+		if _has_active_web():
+			_release_all_webs(false)
 		crosshair.color = crosshair.color.lerp(
 			Color(1.0, 1.0, 1.0, 0.6235),
 			0.18
 		)
 		return
-	if Input.is_action_just_pressed("jump"):
-		_release_web(true)
-	elif Input.is_action_just_released("web_swing"):
-		_release_web(false)
+
+	_handle_web_side_input(WEB_LEFT, "attack")
+	_handle_web_side_input(WEB_RIGHT, "web_swing")
+	if _has_active_web() and Input.is_action_just_pressed("jump"):
+		_release_all_webs(true)
+	if not _has_active_web():
+		crosshair.color = crosshair.color.lerp(
+			Color(1.0, 1.0, 1.0, 0.6235),
+			0.18
+		)
 
 
-func _find_web_anchor() -> Dictionary:
+func _handle_web_side_input(side: int, action: StringName) -> void:
+	if Input.is_action_just_pressed(action):
+		var hit := _find_web_anchor(side)
+		if hit.is_empty():
+			crosshair.color = Color(1.0, 0.28, 0.22, 0.9)
+		else:
+			_attach_web(hit, side)
+	elif Input.is_action_just_released(action):
+		_release_web(side, false)
+
+
+func _has_active_web() -> bool:
+	return bool(_web_states[WEB_LEFT]["active"]) or bool(
+		_web_states[WEB_RIGHT]["active"]
+	)
+
+
+func _find_web_anchor(side := WEB_LEFT) -> Dictionary:
 	var origin := camera.global_position
 	var forward := -camera.global_transform.basis.z
 	var up := camera.global_transform.basis.y
 	var right := camera.global_transform.basis.x
+	var side_sign := -1.0 if side == WEB_LEFT else 1.0
 	var directions: Array[Vector3] = [
 		forward,
 		(forward + up * 0.2).normalized(),
@@ -505,6 +540,7 @@ func _find_web_anchor() -> Dictionary:
 		var score := (
 			height / web_range * 2.4
 			+ direction.dot(forward) * 2.0
+			+ direction.dot(right) * side_sign * 0.5
 			- distance / web_range * 0.35
 		)
 		if score > best_score:
@@ -513,78 +549,105 @@ func _find_web_anchor() -> Dictionary:
 	return best_hit
 
 
-func _attach_web(hit: Dictionary) -> void:
-	_web_anchor = hit.position
-	_web_anchor_body = hit.collider as Node3D
-	if _web_anchor_body:
-		_web_anchor_local = _web_anchor_body.to_local(_web_anchor)
-	else:
-		_web_anchor_local = Vector3.ZERO
-	var distance := global_position.distance_to(_web_anchor)
+func _attach_web(hit: Dictionary, side := WEB_LEFT) -> void:
+	var state := _web_states[side]
+	var anchor: Vector3 = hit.position
+	var anchor_body := hit.collider as Node3D
+	state["anchor"] = anchor
+	state["body"] = anchor_body
+	state["local_anchor"] = (
+		anchor_body.to_local(anchor) if anchor_body else Vector3.ZERO
+	)
+	var distance := global_position.distance_to(anchor)
 	var desired_rope_length := distance * web_rope_slack
 	if is_on_floor():
 		var anchor_height := maxf(
-			_web_anchor.y - global_position.y,
+			anchor.y - global_position.y,
 			web_min_rope_length
 		)
 		desired_rope_length = minf(
 			desired_rope_length,
 			anchor_height * 1.25
 		)
-	_web_rope_length = maxf(desired_rope_length, web_min_rope_length)
-	_web_hand_side *= -1.0
-	_web_active = true
+	state["rope_length"] = maxf(desired_rope_length, web_min_rope_length)
+	state["active"] = true
+	_web_states[side] = state
 	_dash_time_left = 0.0
-	var pull_direction := (_web_anchor - global_position).normalized()
+	var pull_direction := (anchor - global_position).normalized()
 	velocity += pull_direction * web_attach_pull
 	if is_on_floor():
 		velocity.y = maxf(velocity.y, jump_velocity * 0.85)
 	crosshair.color = Color(0.38, 0.9, 1.0, 1.0)
-	_web_line.visible = true
-	_web_anchor_marker.visible = true
+	_web_lines[side].visible = true
+	_web_anchor_markers[side].visible = true
 	if _web_audio_player:
-		_web_audio_player.pitch_scale = randf_range(0.96, 1.06)
+		_web_audio_player.pitch_scale = randf_range(0.94, 1.02) if side == WEB_LEFT else randf_range(1.04, 1.12)
 		_web_audio_player.play()
 
 
-func _release_web(boosted: bool) -> void:
-	if not _web_active:
+func _release_web(side: int, boosted := false) -> void:
+	var state := _web_states[side]
+	if not bool(state["active"]):
 		return
-	_web_active = false
-	_web_anchor_body = null
-	_web_line.visible = false
-	_web_anchor_marker.visible = false
-	crosshair.color = Color(1.0, 1.0, 1.0, 0.6235)
+	state["active"] = false
+	state["body"] = null
+	_web_states[side] = state
+	_web_lines[side].visible = false
+	_web_anchor_markers[side].visible = false
 	if boosted:
-		var forward := -camera.global_transform.basis.z
-		var launch_direction := (forward + Vector3.UP * 0.48).normalized()
-		velocity += launch_direction * web_release_boost
-		if velocity.length() > web_max_speed:
-			velocity = velocity.normalized() * web_max_speed
-		if _web_audio_player:
-			_web_audio_player.pitch_scale = 1.32
-			_web_audio_player.play()
+		_apply_web_release_boost()
 
 
-func _refresh_web_anchor() -> bool:
-	if _web_anchor_body == null:
+func _release_all_webs(boosted: bool) -> void:
+	var had_active_web := _has_active_web()
+	for side in 2:
+		_release_web(side, false)
+	if boosted and had_active_web:
+		_apply_web_release_boost()
+	crosshair.color = Color(1.0, 1.0, 1.0, 0.6235)
+
+
+func _apply_web_release_boost() -> void:
+	var forward := -camera.global_transform.basis.z
+	var launch_direction := (forward + Vector3.UP * 0.48).normalized()
+	velocity += launch_direction * web_release_boost
+	if velocity.length() > web_max_speed:
+		velocity = velocity.normalized() * web_max_speed
+	if _web_audio_player:
+		_web_audio_player.pitch_scale = 1.32
+		_web_audio_player.play()
+
+
+func _refresh_web_anchor(side: int) -> bool:
+	var state := _web_states[side]
+	var anchor_body := state["body"] as Node3D
+	if anchor_body == null:
 		return true
-	if not is_instance_valid(_web_anchor_body):
-		_release_web(false)
+	if not is_instance_valid(anchor_body):
+		_release_web(side, false)
 		return false
-	_web_anchor = _web_anchor_body.to_global(_web_anchor_local)
+	state["anchor"] = anchor_body.to_global(state["local_anchor"])
+	_web_states[side] = state
 	return true
 
 
 func _update_web_swing(move_direction: Vector3, delta: float) -> void:
-	if not _refresh_web_anchor():
+	var active_sides: Array[int] = []
+	var combined_radial := Vector3.ZERO
+	for side in 2:
+		if not bool(_web_states[side]["active"]) or not _refresh_web_anchor(side):
+			continue
+		var anchor: Vector3 = _web_states[side]["anchor"]
+		var to_anchor := anchor - global_position
+		var distance := to_anchor.length()
+		if distance < 0.01 or distance > web_range * 1.35:
+			_release_web(side, false)
+			continue
+		active_sides.append(side)
+		combined_radial += to_anchor / distance
+	if active_sides.is_empty():
 		return
-	var to_anchor := _web_anchor - global_position
-	var distance := to_anchor.length()
-	if distance < 0.01 or distance > web_range * 1.35:
-		_release_web(false)
-		return
-	var radial_direction := to_anchor / distance
+	var radial_direction := combined_radial.normalized()
 	if Input.is_action_just_pressed("dash") and _dash_cooldown_left <= 0.0:
 		var dash_tangent := velocity.slide(radial_direction)
 		if dash_tangent.length_squared() < 0.01:
@@ -603,14 +666,21 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 		if forward_tangent.length_squared() > 0.001:
 			velocity += forward_tangent.normalized() * web_forward_assist * delta
 
-	if distance > _web_rope_length:
-		var stretch := distance - _web_rope_length
-		var away_speed := velocity.dot(-radial_direction)
-		if away_speed > 0.0:
-			velocity += radial_direction * away_speed
-		velocity += radial_direction * (
-			web_tension + stretch * web_spring_strength
-		) * delta
+	for side in active_sides:
+		var state := _web_states[side]
+		var anchor: Vector3 = state["anchor"]
+		var to_anchor := anchor - global_position
+		var distance := to_anchor.length()
+		var side_radial := to_anchor / distance
+		var rope_length: float = state["rope_length"]
+		if distance > rope_length:
+			var stretch := distance - rope_length
+			var away_speed := velocity.dot(-side_radial)
+			if away_speed > 0.0:
+				velocity += side_radial * away_speed
+			velocity += side_radial * (
+				web_tension + stretch * web_spring_strength
+			) * delta
 
 	velocity *= maxf(1.0 - web_air_drag * delta, 0.0)
 	if velocity.length() > web_max_speed:
@@ -618,26 +688,39 @@ func _update_web_swing(move_direction: Vector3, delta: float) -> void:
 
 
 func _update_web_visual() -> void:
-	if not _web_active or not _refresh_web_anchor():
-		return
-	var line_start := camera.global_position + (
-		camera.global_transform.basis * Vector3(
-			0.28 * _web_hand_side,
-			-0.2,
-			-0.42
+	for side in 2:
+		if not bool(_web_states[side]["active"]) or not _refresh_web_anchor(side):
+			continue
+		var hand_offset := -0.28 if side == WEB_LEFT else 0.28
+		var line_start := camera.global_position + (
+			camera.global_transform.basis * Vector3(
+				hand_offset,
+				-0.2,
+				-0.42
+			)
 		)
-	)
-	var line_vector := _web_anchor - line_start
-	var line_length := line_vector.length()
-	if line_length < 0.01:
-		return
-	var line_mesh := _web_line.mesh as CylinderMesh
-	line_mesh.height = line_length
-	_web_line.global_transform = Transform3D(
-		Basis(Quaternion(Vector3.UP, line_vector / line_length)),
-		line_start + line_vector * 0.5
-	)
-	_web_anchor_marker.global_position = _web_anchor
+		var anchor: Vector3 = _web_states[side]["anchor"]
+		var line_vector := anchor - line_start
+		var line_length := line_vector.length()
+		if line_length < 0.01:
+			continue
+		var line_mesh := _web_lines[side].mesh as CylinderMesh
+		line_mesh.height = line_length
+		_web_lines[side].global_transform = Transform3D(
+			Basis(Quaternion(Vector3.UP, line_vector / line_length)),
+			line_start + line_vector * 0.5
+		)
+		_web_anchor_markers[side].global_position = anchor
+
+
+func _get_web_focus_anchor() -> Vector3:
+	var anchor_sum := Vector3.ZERO
+	var anchor_count := 0
+	for side in 2:
+		if bool(_web_states[side]["active"]):
+			anchor_sum += _web_states[side]["anchor"]
+			anchor_count += 1
+	return anchor_sum / float(anchor_count) if anchor_count > 0 else global_position
 
 
 func _create_audio_player(
@@ -897,9 +980,10 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 
 	var strafe_roll := -_move_input.x * strafe_roll_degrees * speed_ratio
 	var target_roll := deg_to_rad(strafe_roll + _turn_roll_input)
-	if _web_active:
+	if _has_active_web():
+		var focus_anchor := _get_web_focus_anchor()
 		var local_anchor_direction := camera.global_transform.basis.inverse() * (
-			_web_anchor - camera.global_position
+			focus_anchor - camera.global_position
 		).normalized()
 		target_roll += deg_to_rad(web_camera_roll_degrees) * clampf(
 			-local_anchor_direction.x,
@@ -940,7 +1024,7 @@ func _update_camera(delta: float, headbutt_pose: Vector3) -> void:
 		target_fov += sprint_fov_boost * speed_ratio
 	if _dash_time_left > 0.0:
 		target_fov += dash_fov_boost
-	if _web_active:
+	if _has_active_web():
 		var web_speed_ratio := clampf(
 			(horizontal_speed - sprint_speed) / (web_max_speed - sprint_speed),
 			0.0,

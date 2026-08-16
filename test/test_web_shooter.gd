@@ -8,6 +8,19 @@ func _initialize() -> void:
 
 
 func _run_test() -> void:
+	var left_events := InputMap.action_get_events("attack")
+	var right_events := InputMap.action_get_events("web_swing")
+	if (
+		left_events.is_empty()
+		or not left_events[0] is InputEventMouseButton
+		or left_events[0].button_index != MOUSE_BUTTON_LEFT
+		or right_events.is_empty()
+		or not right_events[0] is InputEventMouseButton
+		or right_events[0].button_index != MOUSE_BUTTON_RIGHT
+	):
+		_fail("left and right web inputs are not mapped to LMB and RMB")
+		return
+
 	var world := Node3D.new()
 	root.add_child(world)
 	current_scene = world
@@ -25,17 +38,32 @@ func _run_test() -> void:
 	world.add_child(player)
 	for frame in range(3):
 		await physics_frame
+	var manager = player.weapon_manager
+	manager.select_weapon(3, true)
+	if not manager.is_web_shooter_selected():
+		_fail("web shooters are not available as weapon slot 4")
+		return
 
-	var hit: Dictionary = player._find_web_anchor()
-	if hit.is_empty():
-		_fail("web shooter did not find a valid building anchor")
+	var left_hit: Dictionary = player._find_web_anchor(player.WEB_LEFT)
+	var right_hit: Dictionary = player._find_web_anchor(player.WEB_RIGHT)
+	if left_hit.is_empty() or right_hit.is_empty():
+		_fail("both web shooters must find a valid building anchor")
 		return
-	player._attach_web(hit)
-	if not player._web_active or not player._web_line.visible:
-		_fail("web did not attach or show its line")
+	player._attach_web(left_hit, player.WEB_LEFT)
+	player._attach_web(right_hit, player.WEB_RIGHT)
+	if (
+		not player._web_states[player.WEB_LEFT]["active"]
+		or not player._web_states[player.WEB_RIGHT]["active"]
+		or not player._web_lines[player.WEB_LEFT].visible
+		or not player._web_lines[player.WEB_RIGHT].visible
+	):
+		_fail("left and right webs did not attach independently")
 		return
-	if player._web_rope_length <= 0.0:
-		_fail("web rope length was not initialized")
+	if (
+		player._web_states[player.WEB_LEFT]["rope_length"] <= 0.0
+		or player._web_states[player.WEB_RIGHT]["rope_length"] <= 0.0
+	):
+		_fail("web rope lengths were not initialized")
 		return
 
 	player.velocity = Vector3(10.0, -3.0, -6.0)
@@ -43,10 +71,17 @@ func _run_test() -> void:
 	if player.velocity.length() > player.web_max_speed + 0.01:
 		_fail("web swing exceeded its configured speed limit")
 		return
+	player._release_web(player.WEB_LEFT)
+	if (
+		player._web_states[player.WEB_LEFT]["active"]
+		or not player._web_states[player.WEB_RIGHT]["active"]
+	):
+		_fail("left web release incorrectly affected the right web")
+		return
 	var speed_before_release: float = player.velocity.length()
-	player._release_web(true)
-	if player._web_active or player._web_line.visible:
-		_fail("web did not release cleanly")
+	player._release_all_webs(true)
+	if player._has_active_web() or player._web_lines[player.WEB_RIGHT].visible:
+		_fail("webs did not release cleanly")
 		return
 	if player.velocity.length() <= speed_before_release:
 		_fail("boosted release did not preserve and add momentum")

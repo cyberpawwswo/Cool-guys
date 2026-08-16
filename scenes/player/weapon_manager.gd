@@ -116,6 +116,39 @@ const WEAPON_DATA: Array[Dictionary] = [
 		"rotation_degrees": Vector3(0.0, 180.0, 0.0),
 		"hide_when_idle": true,
 	},
+	{
+		"display_name": "Web Shooters",
+		"scene": preload("res://scenes/player/web_shooters_viewmodel.tscn"),
+		"fire_sound": null,
+		"reload_sound": null,
+		"fire_volume_db": 0.0,
+		"reload_volume_db": 0.0,
+		"shot_effect_strength": 0.0,
+		"muzzle_position": Vector3.ZERO,
+		"muzzle_size": 0.0,
+		"muzzle_duration": 0.0,
+		"muzzle_light_energy": 0.0,
+		"fire_pitch_range": Vector2.ONE,
+		"fire_tail_pitch": 1.0,
+		"fire_tail_volume_db": -80.0,
+		"view_recoil_position": Vector3.ZERO,
+		"view_recoil_rotation": Vector3.ZERO,
+		"uses_ammo": false,
+		"magazine_capacity": 0,
+		"starting_reserve": 0,
+		"reload_amount": 0,
+		"attack_animations": [],
+		"procedural_fire": false,
+		"reload_animation": StringName(),
+		"equip_animation": StringName(),
+		"idle_animation": StringName(),
+		"cooldown": 0.0,
+		"manual_scale": 1.0,
+		"manual_position": Vector3.ZERO,
+		"rotation_degrees": Vector3.ZERO,
+		"hide_when_idle": false,
+		"web_shooter": true,
+	},
 ]
 
 @onready var weapon_label: Label = _get_player().get_node_or_null("Control/WeaponLabel")
@@ -347,6 +380,10 @@ func get_weapon_count() -> int:
 
 func get_current_weapon_name() -> String:
 	return WEAPON_DATA[current_weapon_index]["display_name"]
+
+
+func is_web_shooter_selected() -> bool:
+	return bool(WEAPON_DATA[current_weapon_index].get("web_shooter", false))
 
 
 func get_current_ammo() -> int:
@@ -1050,6 +1087,8 @@ func _number_key_to_index(keycode: Key) -> int:
 			return 1
 		KEY_3:
 			return 2
+		KEY_4:
+			return 3
 	return -1
 
 

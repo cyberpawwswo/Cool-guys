@@ -1,0 +1,66 @@
+[gd_scene load_steps=6 format=3]
+
+[sub_resource type="StandardMaterial3D" id="ShooterMaterial"]
+albedo_color = Color(0.045, 0.065, 0.09, 1)
+metallic = 0.75
+roughness = 0.28
+
+[sub_resource type="StandardMaterial3D" id="EmitterMaterial"]
+albedo_color = Color(0.32, 0.82, 1, 1)
+metallic = 0.25
+roughness = 0.16
+emission_enabled = true
+emission = Color(0.08, 0.52, 1, 1)
+emission_energy_multiplier = 3.0
+
+[sub_resource type="CapsuleMesh" id="ForearmMesh"]
+material = SubResource("ShooterMaterial")
+radius = 0.105
+height = 0.62
+radial_segments = 12
+rings = 5
+
+[sub_resource type="BoxMesh" id="ShooterMesh"]
+material = SubResource("ShooterMaterial")
+size = Vector3(0.2, 0.12, 0.3)
+
+[sub_resource type="CylinderMesh" id="EmitterMesh"]
+material = SubResource("EmitterMaterial")
+top_radius = 0.055
+bottom_radius = 0.075
+height = 0.1
+radial_segments = 12
+
+[node name="WebShooters" type="Node3D"]
+
+[node name="LeftArm" type="Node3D" parent="."]
+position = Vector3(-0.34, -0.34, -0.68)
+rotation = Vector3(-1.08, -0.12, -0.06)
+
+[node name="Forearm" type="MeshInstance3D" parent="LeftArm"]
+mesh = SubResource("ForearmMesh")
+
+[node name="Shooter" type="MeshInstance3D" parent="LeftArm"]
+position = Vector3(0, 0.08, -0.12)
+mesh = SubResource("ShooterMesh")
+
+[node name="Emitter" type="MeshInstance3D" parent="LeftArm"]
+position = Vector3(0, 0.12, -0.3)
+rotation = Vector3(1.5708, 0, 0)
+mesh = SubResource("EmitterMesh")
+
+[node name="RightArm" type="Node3D" parent="."]
+position = Vector3(0.34, -0.34, -0.68)
+rotation = Vector3(-1.08, 0.12, 0.06)
+
+[node name="Forearm" type="MeshInstance3D" parent="RightArm"]
+mesh = SubResource("ForearmMesh")
+
+[node name="Shooter" type="MeshInstance3D" parent="RightArm"]
+position = Vector3(0, 0.08, -0.12)
+mesh = SubResource("ShooterMesh")
+
+[node name="Emitter" type="MeshInstance3D" parent="RightArm"]
+position = Vector3(0, 0.12, -0.3)
+rotation = Vector3(1.5708, 0, 0)
+mesh = SubResource("EmitterMesh")

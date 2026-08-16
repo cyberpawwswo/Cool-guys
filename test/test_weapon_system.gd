@@ -21,23 +21,23 @@ func _run_test() -> void:
 	if manager == null:
 		_fail("WeaponManager is missing")
 		return
-	if manager.get_weapon_count() != 3:
-		_fail("Expected 3 weapons, got %d" % manager.get_weapon_count())
+	if manager.get_weapon_count() != 4:
+		_fail("Expected 4 weapons, got %d" % manager.get_weapon_count())
 		return
 	if (
-		manager._fire_audio_players.size() != 3
-		or manager._fire_tail_audio_players.size() != 3
-		or manager._reload_audio_players.size() != 3
+		manager._fire_audio_players.size() != 4
+		or manager._fire_tail_audio_players.size() != 4
+		or manager._reload_audio_players.size() != 4
 	):
-		_fail("Expected audio players for all 3 weapon slots")
+		_fail("Expected audio players for all 4 weapon slots")
 		return
 	if (
-		manager._muzzle_effect_roots.size() != 3
-		or manager._muzzle_anchors.size() != 3
-		or manager._muzzle_flash_roots.size() != 3
-		or manager._muzzle_smoke_particles.size() != 3
-		or manager._muzzle_spark_particles.size() != 3
-		or manager._muzzle_gas_particles.size() != 3
+		manager._muzzle_effect_roots.size() != 4
+		or manager._muzzle_anchors.size() != 4
+		or manager._muzzle_flash_roots.size() != 4
+		or manager._muzzle_smoke_particles.size() != 4
+		or manager._muzzle_spark_particles.size() != 4
+		or manager._muzzle_gas_particles.size() != 4
 	):
 		_fail("Expected complete muzzle effect slots for all weapons")
 		return
@@ -52,10 +52,10 @@ func _run_test() -> void:
 		_fail("Ammo HUD did not initialize")
 		return
 
-	var expected_names := ["Boomstick", "Beretta", "Leg Kick"]
-	var starting_magazines := [6, 15, 0]
-	var starting_reserves := [24, 60, 0]
-	for index in manager.get_weapon_count():
+	var expected_names := ["Boomstick", "Beretta", "Leg Kick", "Web Shooters"]
+	var starting_magazines := [6, 15, 0, 0]
+	var starting_reserves := [24, 60, 0, 0]
+	for index in 3:
 		manager.select_weapon(index, true)
 		if manager.get_current_weapon_name() != expected_names[index]:
 			_fail("Unexpected weapon in slot %d" % index)
@@ -153,6 +153,24 @@ func _run_test() -> void:
 		or manager._recoil_rotation_velocity.length() > 0.001
 	):
 		_fail("Spring recoil did not settle back to rest")
+		return
+
+	manager.select_weapon(3, true)
+	if not manager.is_web_shooter_selected():
+		_fail("Slot 4 is not recognized as Web Shooters")
+		return
+	if manager.play_attack():
+		_fail("Web Shooters incorrectly used the weapon damage attack")
+		return
+	if manager.ammo_label.visible:
+		_fail("Web Shooters unexpectedly show the ammo HUD")
+		return
+	if (
+		manager._muzzle_effect_roots[3] != null
+		or manager._muzzle_anchors[3] != null
+		or manager._muzzle_flash_roots[3] != null
+	):
+		_fail("Web Shooters unexpectedly have firearm muzzle effects")
 		return
 
 	manager.select_weapon(0, true)
@@ -293,15 +311,23 @@ func _run_test() -> void:
 		_fail("Cancelled Beretta reload consumed reserve ammo")
 		return
 
+	var key_event := InputEventKey.new()
+	key_event.physical_keycode = KEY_4
+	key_event.pressed = true
+	player._input(key_event)
+	if manager.get_current_weapon_name() != "Web Shooters":
+		_fail("Key 4 did not select Web Shooters")
+		return
+
 	var wheel_event := InputEventMouseButton.new()
 	wheel_event.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel_event.pressed = true
 	player._input(wheel_event)
 	if manager.get_current_weapon_name() != "Boomstick":
-		_fail("Mouse wheel input was not forwarded to the viewmodel")
+		_fail("Mouse wheel did not wrap from slot 4 to slot 1")
 		return
 
-	print("WEAPON SYSTEM TEST PASSED: 3 weapons loaded and switched")
+	print("WEAPON SYSTEM TEST PASSED: 4 weapons loaded and switched")
 	quit(0)
 
 
