@@ -1,0 +1,256 @@
+[gd_scene format=3 uid="uid://ddta6a716fcit"]
+
+[ext_resource type="Script" uid="uid://fvihnxaacjsg" path="res://scenes/npc/helicopter/helicopter.gd" id="1_1gqs3"]
+[ext_resource type="Script" uid="uid://bq3nb52728780" path="res://scenes/npc/helicopter/machine_gun.gd" id="1_lqpol"]
+[ext_resource type="ArrayMesh" uid="uid://by1y17etodjm4" path="res://assets/boss/helicopter/scene.gltf" id="1_lu8db"]
+[ext_resource type="Texture2D" uid="uid://bravkc5chb2tt" path="res://assets/boss/helicopter/textures/mat_66_baseColor.png" id="2_4ogji"]
+[ext_resource type="ArrayMesh" uid="uid://bogpr4fqtf8pe" path="res://assets/muzzle_flash/flash.glb" id="2_t8o15"]
+[ext_resource type="Texture2D" uid="uid://dxnv3p58t0u71" path="res://assets/muzzle_flash/flash01.png" id="2_wwxwb"]
+[ext_resource type="Texture2D" uid="uid://fjo1807so0w0" path="res://assets/boss/helicopter/textures/mat_67_baseColor.png" id="3_nk128"]
+[ext_resource type="Texture2D" uid="uid://b7ubppiau1xs" path="res://assets/muzzle_flash/flash_circle.png" id="4_6qyih"]
+[ext_resource type="Texture2D" uid="uid://0j6xs5naj7sk" path="res://assets/boss/helicopter/textures/mat_68_baseColor.png" id="4_lqpol"]
+[ext_resource type="Texture2D" uid="uid://o5xoik5afe22" path="res://assets/muzzle_flash/muzzle_flash_06.png" id="6_muupj"]
+[ext_resource type="Texture2D" uid="uid://dphlnm1h2etwd" path="res://assets/muzzle_flash/muzzle_flash_07.png" id="7_6qyih"]
+[ext_resource type="Script" uid="uid://bxirywugtvhie" path="res://scenes/explustion_complation/explustion_complation.gd" id="19_48a8b"]
+[ext_resource type="ArrayMesh" uid="uid://c44lujhi6bkic" path="res://assets/muzzle_flash/falsh_cone.obj" id="22_muupj"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_48a8b"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_t8o15"]
+sky_material = SubResource("ProceduralSkyMaterial_48a8b")
+
+[sub_resource type="Environment" id="Environment_wwxwb"]
+background_mode = 2
+sky = SubResource("Sky_t8o15")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_muupj"]
+transparency = 1
+cull_mode = 2
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("2_wwxwb")
+emission = Color(0.53038955, 0.53038955, 0.53038955, 1)
+disable_receive_shadows = true
+
+[sub_resource type="Gradient" id="Gradient_wwxwb"]
+offsets = PackedFloat32Array(0, 0.225, 1)
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.84566844, 1, 1, 1, 0.3882353)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_s3q4w"]
+gradient = SubResource("Gradient_wwxwb")
+
+[sub_resource type="Curve" id="Curve_muupj"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="CurveTexture_voui1"]
+curve = SubResource("Curve_muupj")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_wwxwb"]
+use_rotation_3d = true
+rotation_3d_min = Vector3(0, 0, 0)
+rotation_3d_max = Vector3(0, 0, 360)
+gravity = Vector3(0, 0, 0)
+use_scale_3d = true
+scale_3d_min = Vector3(0.3, 0.3, 0.75)
+scale_3d_max = Vector3(0.5, 0.5, 1)
+scale_curve = SubResource("CurveTexture_voui1")
+color = Color(6.968, 1.21, 0.68, 1)
+color_ramp = SubResource("GradientTexture1D_s3q4w")
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_bavw8"]
+use_rotation_3d = true
+rotation_3d_min = Vector3(0, 0, 0)
+rotation_3d_max = Vector3(0, 0, 360)
+gravity = Vector3(0, 0, 0)
+scale_min = 0.099999994
+color = Color(6.968, 1.21, 0.68, 1)
+color_ramp = SubResource("GradientTexture1D_s3q4w")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3ube6"]
+transparency = 1
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("4_6qyih")
+billboard_mode = 1
+
+[sub_resource type="QuadMesh" id="QuadMesh_oh74m"]
+material = SubResource("StandardMaterial3D_3ube6")
+size = Vector2(0.175, 0.115)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wwxwb"]
+transparency = 1
+cull_mode = 2
+vertex_color_use_as_albedo = true
+albedo_texture = ExtResource("6_muupj")
+emission = Color(6.968, 1.21, 0.68, 1)
+emission_operator = 1
+disable_receive_shadows = true
+grow = true
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_muupj"]
+lifetime_randomness = 1.0
+use_rotation_3d = true
+rotation_3d_min = Vector3(0, 0, 0)
+rotation_3d_max = Vector3(0, 0, 360)
+direction = Vector3(0, 0, -1)
+spread = 22.115
+flatness = 0.19
+initial_velocity_min = 4.0
+initial_velocity_max = 7.0
+gravity = Vector3(-0.5, -0.4, 0)
+scale_min = 0.5
+scale_curve = SubResource("CurveTexture_voui1")
+color = Color(6.968, 1.21, 0.68, 1)
+color_ramp = SubResource("GradientTexture1D_s3q4w")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_fm6ng"]
+transparency = 1
+cull_mode = 2
+albedo_texture = ExtResource("7_6qyih")
+disable_receive_shadows = true
+
+[sub_resource type="QuadMesh" id="QuadMesh_7m2p8"]
+material = SubResource("StandardMaterial3D_fm6ng")
+size = Vector2(0.4, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1luts"]
+albedo_texture = ExtResource("2_4ogji")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ttjo5"]
+albedo_texture = ExtResource("3_nk128")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_cfu8l"]
+albedo_texture = ExtResource("4_lqpol")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_oh74m"]
+radius = 24.1167
+height = 164.69186
+
+[sub_resource type="BoxMesh" id="BoxMesh_3ube6"]
+
+[sub_resource type="Animation" id="Animation_t8o15"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MeshInstance3D:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(2.3918505, 0, -5.603255)]
+}
+
+[sub_resource type="Animation" id="Animation_48a8b"]
+resource_name = "new_animation"
+length = 10.0
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("MeshInstance3D:position")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 5),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(2.3918505, 0, -5.603255), Vector3(-3.2574258, 0, -5.603255)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_t8o15"]
+_data = {
+&"RESET": SubResource("Animation_t8o15"),
+&"new_animation": SubResource("Animation_48a8b")
+}
+
+[node name="Node3D2" type="Node3D" unique_id=1322960303]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=890276069]
+transform = Transform3D(0.9011093, 0.43040845, 0.05245313, 0.26081103, -0.63468766, 0.7274264, 0.34638193, -0.64181024, -0.6841779, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1059492427]
+environment = SubResource("Environment_wwxwb")
+
+[node name="Helicopter" type="CharacterBody3D" parent="." unique_id=1497905902]
+script = ExtResource("1_1gqs3")
+
+[node name="RayCast3D" type="RayCast3D" parent="Helicopter" unique_id=1513896982]
+target_position = Vector3(0, 0, -200)
+
+[node name="ExplusionComplation" type="Node3D" parent="Helicopter/RayCast3D" unique_id=194484195]
+script = ExtResource("19_48a8b")
+metadata/_custom_type_script = "uid://bxirywugtvhie"
+
+[node name="MainParticle" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=395486735]
+material_override = SubResource("StandardMaterial3D_muupj")
+emitting = false
+amount = 1
+lifetime = 0.12
+one_shot = true
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_wwxwb")
+draw_pass_1 = ExtResource("2_t8o15")
+
+[node name="FlashParticle" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=172801697]
+emitting = false
+amount = 1
+lifetime = 0.12
+one_shot = true
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_bavw8")
+draw_pass_1 = SubResource("QuadMesh_oh74m")
+
+[node name="CIrleParcile" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=337745614]
+material_override = SubResource("StandardMaterial3D_wwxwb")
+emitting = false
+amount = 1
+lifetime = 0.12
+one_shot = true
+local_coords = true
+process_material = SubResource("ParticleProcessMaterial_wwxwb")
+draw_pass_1 = ExtResource("22_muupj")
+
+[node name="SmallParticle" type="GPUParticles3D" parent="Helicopter/RayCast3D/ExplusionComplation" unique_id=480024897]
+emitting = false
+amount = 10
+lifetime = 0.15000000000000002
+one_shot = true
+explosiveness = 1.0
+local_coords = true
+transform_align = 2
+process_material = SubResource("ParticleProcessMaterial_muupj")
+draw_pass_1 = SubResource("QuadMesh_7m2p8")
+
+[node name="Camera3D" type="Camera3D" parent="Helicopter" unique_id=1464729859]
+transform = Transform3D(0.17496844, 0, -0.9845742, 0, 1, 0, 0.984574, 0, 0.17496845, -4.496567, 1.4609177, -0.7413416)
+
+[node name="MachineGun" type="Node3D" parent="Helicopter" unique_id=1205078171 node_paths=PackedStringArray("shoot_ray_cast", "explution_shoot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.3632402, 2.7266657, 0)
+script = ExtResource("1_lqpol")
+rate_of_fire = 0.4
+shoot_ray_cast = NodePath("../RayCast3D")
+explution_shoot = NodePath("../RayCast3D/ExplusionComplation")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Helicopter" unique_id=42859927]
+transform = Transform3D(-1.3113416e-09, 0, 0.03, 0, 0.03, 0, -0.03, 0, -1.3113416e-09, 0.16483921, 0, 0.16483921)
+visible = false
+mesh = ExtResource("1_lu8db")
+surface_material_override/0 = SubResource("StandardMaterial3D_1luts")
+surface_material_override/1 = SubResource("StandardMaterial3D_ttjo5")
+surface_material_override/2 = SubResource("StandardMaterial3D_cfu8l")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Helicopter" unique_id=1521595793]
+transform = Transform3D(5.5793e-12, -8.302877e-10, 0.0189952, -0.01899477, -0.0001276395, 0, 0.0001276395, -0.01899477, -8.3030655e-10, 0.16483921, 0.6069196, -0.16483921)
+shape = SubResource("CapsuleShape3D_oh74m")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1091480837]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.3918505, 0, -5.603255)
+mesh = SubResource("BoxMesh_3ube6")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=2055487085]
+libraries/ = SubResource("AnimationLibrary_t8o15")
