@@ -1,10 +1,70 @@
 [gd_scene format=3 uid="uid://bo48vpl8xntiy"]
 
 [ext_resource type="Script" uid="uid://cs1m44gmegdvt" path="res://scenes/ui/main_menu/main_menu.gd" id="1_1ch07"]
-[ext_resource type="Shader" path="res://scenes/ui/main_menu/psychedelic_bg.gdshader" id="2_pshy"]
+[ext_resource type="Shader" uid="uid://b437yflhtw1eb" path="res://scenes/ui/main_menu/psychedelic_bg.gdshader" id="2_pshy"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("2_pshy")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_play_normal"]
+content_margin_left = 56.0
+content_margin_top = 18.0
+content_margin_right = 56.0
+content_margin_bottom = 18.0
+bg_color = Color(0.1, 0.1, 0.1, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.9, 0.9, 0.9, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pressed"]
+content_margin_left = 56.0
+content_margin_top = 18.0
+content_margin_right = 56.0
+content_margin_bottom = 18.0
+bg_color = Color(0.35, 0.35, 0.35, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.05, 0.05, 0.05, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_play_hover"]
+content_margin_left = 56.0
+content_margin_top = 18.0
+content_margin_right = 56.0
+content_margin_bottom = 18.0
+bg_color = Color(0.22, 0.22, 0.22, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_focus"]
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.05, 0.05, 0.05, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_normal"]
 content_margin_left = 56.0
@@ -38,83 +98,14 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_pressed"]
-content_margin_left = 56.0
-content_margin_top = 18.0
-content_margin_right = 56.0
-content_margin_bottom = 18.0
-bg_color = Color(0.35, 0.35, 0.35, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.05, 0.05, 0.05, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+[sub_resource type="LabelSettings" id="LabelSettings_oh74m"]
+font_size = 29
+font_color = Color(0, 0, 0, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_focus"]
-draw_center = false
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.05, 0.05, 0.05, 1)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
+[sub_resource type="LabelSettings" id="LabelSettings_3ube6"]
+font_color = Color(0, 0, 0, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hover_white"]
-content_margin_left = 56.0
-content_margin_top = 18.0
-content_margin_right = 56.0
-content_margin_bottom = 18.0
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.05, 0.05, 0.05, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_play_normal"]
-content_margin_left = 56.0
-content_margin_top = 18.0
-content_margin_right = 56.0
-content_margin_bottom = 18.0
-bg_color = Color(0.1, 0.1, 0.1, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.9, 0.9, 0.9, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_play_hover"]
-content_margin_left = 56.0
-content_margin_top = 18.0
-content_margin_right = 56.0
-content_margin_bottom = 18.0
-bg_color = Color(0.22, 0.22, 0.22, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=196682561]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -123,7 +114,8 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_1ch07")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=777129151]
+material = SubResource("ShaderMaterial_bg")
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -131,10 +123,8 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-material = SubResource("ShaderMaterial_bg")
-color = Color(1, 1, 1, 1)
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1024958287]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -142,12 +132,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer"]
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer" unique_id=781268793]
 layout_mode = 2
 theme_override_constants/separation = 24
 alignment = 1
 
-[node name="Title" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Title" type="Label" parent="CenterContainer/VBoxContainer" unique_id=2098175510]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
 theme_override_colors/font_shadow_color = Color(0.55, 0.55, 0.55, 0.45)
@@ -157,42 +147,42 @@ theme_override_font_sizes/font_size = 72
 text = "COOL GUYS"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer"]
+[node name="Subtitle" type="Label" parent="CenterContainer/VBoxContainer" unique_id=1094114320]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.35, 0.35, 0.35, 0.9)
 theme_override_font_sizes/font_size = 22
 text = "Бодайся головой — и побеждай!"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer"]
-layout_mode = 2
+[node name="Spacer" type="Control" parent="CenterContainer/VBoxContainer" unique_id=381855786]
 custom_minimum_size = Vector2(0, 24)
+layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="PlayButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1924745695]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_font_sizes/font_size = 30
 theme_override_styles/normal = SubResource("StyleBoxFlat_play_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_play_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_play_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_focus")
 text = "Играть"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer"]
+[node name="QuitButton" type="Button" parent="CenterContainer/VBoxContainer" unique_id=1437214640]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.05, 0.05, 0.05, 1)
-theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_colors/font_pressed_color = Color(0.85, 0.85, 0.85, 1)
+theme_override_colors/font_hover_color = Color(0.95, 0.95, 0.95, 1)
 theme_override_font_sizes/font_size = 30
 theme_override_styles/normal = SubResource("StyleBoxFlat_normal")
-theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_pressed")
+theme_override_styles/hover = SubResource("StyleBoxFlat_hover")
 theme_override_styles/focus = SubResource("StyleBoxFlat_focus")
 text = "Выход"
 
-[node name="Footer" type="Label" parent="."]
+[node name="Footer" type="Label" parent="." unique_id=721032902]
 layout_mode = 1
 anchors_preset = 7
 anchor_left = 0.5
@@ -209,6 +199,53 @@ theme_override_colors/font_color = Color(0.25, 0.25, 0.25, 0.45)
 theme_override_font_sizes/font_size = 16
 text = "Игровой джем • бодайся головой"
 horizontal_alignment = 1
+
+[node name="Disclaimer" type="ColorRect" parent="." unique_id=1245514584]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="Disclaimer" unique_id=940610667]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Вот универсальный текст дисклеймера, составленный с учётом вашего запроса. Вы можете адаптировать его под конкретный проект (игра, мод, видео, софт).
+Дисклеймер
+⚠️ ВАЖНОЕ ПРЕДУПРЕЖДЕНИЕ
+Данный материал предоставляется исключительно в ознакомительных и развлекательных целях. Автор(ы) не преследовали намерения причинить вред, оскорбить кого-либо или пропагандировать опасное поведение. Всё представленное здесь является вымыслом, художественным преувеличением или результатом технического экспериментирования.
+Использование на свой страх и риск
+Любое использование, воспроизведение, модификация или применение информации из данного материала осуществляется исключительно на ваш собственный страх и риск. Автор(ы) не несёт ответственности за любой ущерб (прямой или косвенный), включая потерю данных, повреждение оборудования, проблемы со здоровьем или иные негативные последствия, возникшие в результате взаимодействия с данным контентом.
+Предупреждение для впечатлительных лиц
+Материал может содержать элементы, способные вызвать дискомфорт у эмоционально чувствительных людей, включая:
+Визуальные и звуковые эффекты высокой интенсивности;
+Сцены насилия, хоррора или психологического давления;
+Резкие вспышки света и громкие звуки (фоточувствительность);
+Темы, которые могут быть триггерными или тревожными.
+Если вы относитесь к категории впечатлительных лиц, имеете фоточувствительную эпилепсию, сердечно-сосудистые заболевания или иные состояния, при которых подобный контент противопоказан, настоятельно рекомендуется воздержаться от ознакомления с данным материалом. Продолжая взаимодействие, вы подтверждаете, что осознаёте возможные риски и принимаете их добровольно."
+label_settings = SubResource("LabelSettings_oh74m")
+autowrap_mode = 2
+
+[node name="Label2" type="Label" parent="Disclaimer" unique_id=2083359621]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -59.0
+offset_top = -981.0
+offset_right = -13.0
+offset_bottom = -958.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "asfasf"
+label_settings = SubResource("LabelSettings_3ube6")
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/PlayButton" to="." method="_on_play_button_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/QuitButton" to="." method="_on_quit_button_pressed"]
