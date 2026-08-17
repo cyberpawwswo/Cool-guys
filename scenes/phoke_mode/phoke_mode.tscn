@@ -1,0 +1,59 @@
+[gd_scene format=3 uid="uid://vwpgr2vqi4p0"]
+
+[ext_resource type="Script" uid="uid://df8bhv7owbxtq" path="res://scenes/phoke_mode/phoke_mode.gd" id="1_obgc7"]
+[ext_resource type="Texture2D" uid="uid://kvwi60dqoq0e" path="res://assets/troll_face/3c9e71d37ae42331732dbc470cbd6868.jpg" id="2_2ppnc"]
+[ext_resource type="Shader" uid="uid://ci88h8wk6a5x6" path="res://scenes/phoke_mode/phoke_mode.gdshader" id="2_cmkyk"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_2ppnc"]
+shader = ExtResource("2_cmkyk")
+shader_parameter/shake_power = 0.03
+shader_parameter/shake_rate = 0.2
+shader_parameter/shake_speed = 5.0
+shader_parameter/shake_block_size = 30.5
+shader_parameter/shake_color_rate = 0.01
+
+[node name="PhokeMode" type="Control" unique_id=2044808677]
+process_mode = 3
+z_index = 4096
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_obgc7")
+
+[node name="TextureRect" type="TextureRect" parent="." unique_id=700116029]
+material = SubResource("ShaderMaterial_2ppnc")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_2ppnc")
+expand_mode = 1
+
+[node name="TextureRect2" type="TextureRect" parent="." unique_id=1501891050]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -125.75
+offset_top = -125.75
+offset_right = 125.75
+offset_bottom = 125.75
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("2_2ppnc")
+expand_mode = 1
+
+[node name="Timer" type="Timer" parent="." unique_id=1936062947]
+wait_time = 60.0
+autostart = true
+
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=1734933497]
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

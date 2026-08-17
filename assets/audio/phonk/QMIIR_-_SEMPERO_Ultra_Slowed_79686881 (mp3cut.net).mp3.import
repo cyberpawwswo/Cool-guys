@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://syfmrp6v6ebx"
+path="res://.godot/imported/QMIIR_-_SEMPERO_Ultra_Slowed_79686881 (mp3cut.net).mp3-b913c2c9049847ed74de00ceab9143d1.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/phonk/QMIIR_-_SEMPERO_Ultra_Slowed_79686881 (mp3cut.net).mp3"
+dest_files=["res://.godot/imported/QMIIR_-_SEMPERO_Ultra_Slowed_79686881 (mp3cut.net).mp3-b913c2c9049847ed74de00ceab9143d1.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4
