@@ -20,6 +20,9 @@ config/icon="res://icon.svg"
 Config="*uid://8mckxp2b1rh"
 GlowManager="*res://scenes/glow/glow_manager.gd"
 PhokeMode="*uid://vwpgr2vqi4p0"
+Music="*res://scenes/music/music_manager.gd"
+MemeSounds="*res://scenes/memes/meme_sound_manager.gd"
+MemeFx="*res://scenes/fx/meme_fx.gd"
 
 [display]
 

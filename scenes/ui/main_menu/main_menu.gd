@@ -11,11 +11,11 @@ var _normal_styles: Array[StyleBoxFlat] = []
 var _hover_styles: Array[StyleBoxFlat] = []
 
 func _ready() -> void:
+	_restore_game_window()
 	var tween = create_tween()
 	tween.tween_method(_set_text, 20, 1, 6)
 	tween.tween_callback($Disclaimer.queue_free)
 	await tween.finished
-	
 	_gather_styles()
 	_fade_in_menu()
 	_setup_button_effects()
@@ -24,6 +24,12 @@ func _ready() -> void:
 
 func _set_text(idx):
 	$Disclaimer/Label2.text = str(idx)
+
+
+func _restore_game_window() -> void:
+	var window := get_window()
+	window.mode = Window.MODE_FULLSCREEN
+	window.grab_focus()
 
 func _process(delta: float) -> void:
 	_effect_time += delta

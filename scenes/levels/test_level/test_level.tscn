@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://d0jbtqva4g871" path="res://scenes/rigid_body_3d.tscn" id="4_uxvkn"]
 [ext_resource type="Script" uid="uid://klr045vqhbbu" path="res://scenes/levels/test_level/dark_mode.gd" id="6_darkmode"]
 [ext_resource type="PackedScene" path="res://scenes/levels/big_city/big_city_map.tscn" id="7_map"]
+[ext_resource type="PackedScene" path="res://scenes/tuan_sahur/tuan_sahur.tscn" id="8_sahur"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_i0vk3"]
 resource_local_to_scene = true
@@ -158,3 +159,6 @@ shape = SubResource("BoxShape3D_0x52n")
 
 [node name="MeshInstance3D6" type="MeshInstance3D" parent="RigidBody3D2" unique_id=268899994 groups=["glow_body"]]
 mesh = SubResource("BoxMesh_m0omp")
+
+[node name="TuanSahur" parent="." instance=ExtResource("8_sahur")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -160, 12, -180)
