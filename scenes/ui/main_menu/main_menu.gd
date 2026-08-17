@@ -11,19 +11,10 @@ var _normal_styles: Array[StyleBoxFlat] = []
 var _hover_styles: Array[StyleBoxFlat] = []
 
 func _ready() -> void:
-	var tween = create_tween()
-	tween.tween_method(_set_text, 20, 1, 6)
-	tween.tween_callback($Disclaimer.queue_free)
-	await tween.finished
-	
 	_gather_styles()
 	_fade_in_menu()
 	_setup_button_effects()
 	$CenterContainer/VBoxContainer/PlayButton.grab_focus()
-
-
-func _set_text(idx):
-	$Disclaimer/Label2.text = str(idx)
 
 func _process(delta: float) -> void:
 	_effect_time += delta
@@ -105,3 +96,7 @@ func _on_play_button_pressed() -> void:
 
 func _on_quit_button_pressed() -> void:
 	get_tree().quit()
+
+
+func _on_audio_stream_player_finished() -> void:
+	$AudioStreamPlayer.play()

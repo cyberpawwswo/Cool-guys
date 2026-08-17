@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://cs1m44gmegdvt" path="res://scenes/ui/main_menu/main_menu.gd" id="1_1ch07"]
 [ext_resource type="Shader" uid="uid://b437yflhtw1eb" path="res://scenes/ui/main_menu/psychedelic_bg.gdshader" id="2_pshy"]
+[ext_resource type="AudioStream" uid="uid://deilrudd3omg2" path="res://assets/audio/main_menu_music.mp3" id="3_qt1dd"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_bg"]
 shader = ExtResource("2_pshy")
@@ -98,13 +99,6 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
-[sub_resource type="LabelSettings" id="LabelSettings_oh74m"]
-font_size = 29
-font_color = Color(0, 0, 0, 1)
-
-[sub_resource type="LabelSettings" id="LabelSettings_3ube6"]
-font_color = Color(0, 0, 0, 1)
-
 [node name="MainMenu" type="Control" unique_id=196682561]
 layout_mode = 3
 anchors_preset = 15
@@ -200,52 +194,10 @@ theme_override_font_sizes/font_size = 16
 text = "Игровой джем • бодайся головой"
 horizontal_alignment = 1
 
-[node name="Disclaimer" type="ColorRect" parent="." unique_id=1245514584]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Label" type="Label" parent="Disclaimer" unique_id=940610667]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "Вот универсальный текст дисклеймера, составленный с учётом вашего запроса. Вы можете адаптировать его под конкретный проект (игра, мод, видео, софт).
-Дисклеймер
-⚠️ ВАЖНОЕ ПРЕДУПРЕЖДЕНИЕ
-Данный материал предоставляется исключительно в ознакомительных и развлекательных целях. Автор(ы) не преследовали намерения причинить вред, оскорбить кого-либо или пропагандировать опасное поведение. Всё представленное здесь является вымыслом, художественным преувеличением или результатом технического экспериментирования.
-Использование на свой страх и риск
-Любое использование, воспроизведение, модификация или применение информации из данного материала осуществляется исключительно на ваш собственный страх и риск. Автор(ы) не несёт ответственности за любой ущерб (прямой или косвенный), включая потерю данных, повреждение оборудования, проблемы со здоровьем или иные негативные последствия, возникшие в результате взаимодействия с данным контентом.
-Предупреждение для впечатлительных лиц
-Материал может содержать элементы, способные вызвать дискомфорт у эмоционально чувствительных людей, включая:
-Визуальные и звуковые эффекты высокой интенсивности;
-Сцены насилия, хоррора или психологического давления;
-Резкие вспышки света и громкие звуки (фоточувствительность);
-Темы, которые могут быть триггерными или тревожными.
-Если вы относитесь к категории впечатлительных лиц, имеете фоточувствительную эпилепсию, сердечно-сосудистые заболевания или иные состояния, при которых подобный контент противопоказан, настоятельно рекомендуется воздержаться от ознакомления с данным материалом. Продолжая взаимодействие, вы подтверждаете, что осознаёте возможные риски и принимаете их добровольно."
-label_settings = SubResource("LabelSettings_oh74m")
-autowrap_mode = 2
-
-[node name="Label2" type="Label" parent="Disclaimer" unique_id=2083359621]
-layout_mode = 1
-anchors_preset = 7
-anchor_left = 0.5
-anchor_top = 1.0
-anchor_right = 0.5
-anchor_bottom = 1.0
-offset_left = -59.0
-offset_top = -981.0
-offset_right = -13.0
-offset_bottom = -958.0
-grow_horizontal = 2
-grow_vertical = 0
-text = "asfasf"
-label_settings = SubResource("LabelSettings_3ube6")
+[node name="AudioStreamPlayer" type="AudioStreamPlayer" parent="." unique_id=324802041]
+stream = ExtResource("3_qt1dd")
+autoplay = true
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/PlayButton" to="." method="_on_play_button_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/QuitButton" to="." method="_on_quit_button_pressed"]
+[connection signal="finished" from="AudioStreamPlayer" to="." method="_on_audio_stream_player_finished"]
