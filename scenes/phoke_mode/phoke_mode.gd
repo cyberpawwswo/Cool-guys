@@ -7,8 +7,8 @@ func _ready() -> void:
 
 
 func _on_timer_timeout() -> void:
-	if randf() >= 0.5:
-		return
+	#if randf() >= 0.5:
+		#return
 	get_tree().paused = true
 	_set_random_emoji()
 	_set_random_audio()
