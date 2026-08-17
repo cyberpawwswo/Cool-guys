@@ -1,0 +1,66 @@
+[gd_scene format=3 uid="uid://bpn8nw1oyg5e5"]
+
+[ext_resource type="Script" uid="uid://cstxow0al3yti" path="res://scenes/ui/main_menu/disclaimer.gd" id="1_b6bw5"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_kc3cm"]
+font_size = 29
+font_color = Color(0, 0, 0, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_b6bw5"]
+font_color = Color(0, 0, 0, 1)
+
+[node name="Disclaimer" type="Control" unique_id=795293195]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_b6bw5")
+
+[node name="Disclaimer" type="ColorRect" parent="." unique_id=1366938355]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Label" type="Label" parent="Disclaimer" unique_id=1400689138]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Вот универсальный текст дисклеймера, составленный с учётом вашего запроса. Вы можете адаптировать его под конкретный проект (игра, мод, видео, софт).
+Дисклеймер
+⚠️ ВАЖНОЕ ПРЕДУПРЕЖДЕНИЕ
+Данный материал предоставляется исключительно в ознакомительных и развлекательных целях. Автор(ы) не преследовали намерения причинить вред, оскорбить кого-либо или пропагандировать опасное поведение. Всё представленное здесь является вымыслом, художественным преувеличением или результатом технического экспериментирования.
+Использование на свой страх и риск
+Любое использование, воспроизведение, модификация или применение информации из данного материала осуществляется исключительно на ваш собственный страх и риск. Автор(ы) не несёт ответственности за любой ущерб (прямой или косвенный), включая потерю данных, повреждение оборудования, проблемы со здоровьем или иные негативные последствия, возникшие в результате взаимодействия с данным контентом.
+Предупреждение для впечатлительных лиц
+Материал может содержать элементы, способные вызвать дискомфорт у эмоционально чувствительных людей, включая:
+Визуальные и звуковые эффекты высокой интенсивности;
+Сцены насилия, хоррора или психологического давления;
+Резкие вспышки света и громкие звуки (фоточувствительность);
+Темы, которые могут быть триггерными или тревожными.
+Если вы относитесь к категории впечатлительных лиц, имеете фоточувствительную эпилепсию, сердечно-сосудистые заболевания или иные состояния, при которых подобный контент противопоказан, настоятельно рекомендуется воздержаться от ознакомления с данным материалом. Продолжая взаимодействие, вы подтверждаете, что осознаёте возможные риски и принимаете их добровольно."
+label_settings = SubResource("LabelSettings_kc3cm")
+autowrap_mode = 2
+
+[node name="Label2" type="Label" parent="Disclaimer" unique_id=647760103]
+layout_mode = 1
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -59.0
+offset_top = -981.0
+offset_right = -13.0
+offset_bottom = -958.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "asfasf"
+label_settings = SubResource("LabelSettings_b6bw5")

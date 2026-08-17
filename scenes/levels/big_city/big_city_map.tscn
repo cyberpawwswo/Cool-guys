@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/levels/big_city/big_city_collision.scn" id="2_collision"]
 [ext_resource type="Script" uid="uid://l2p22y2redqc" path="res://scenes/levels/big_city/big_city_map.gd" id="3_script"]
 [ext_resource type="PackedScene" uid="uid://ddta6a716fcit" path="res://scenes/npc/helicopter/helicopter.tscn" id="4_b8n5o"]
+[ext_resource type="PackedScene" uid="uid://pt6xrvfbtknd" path="res://scenes/levels/miku.tscn" id="5_jpnk4"]
 
 [sub_resource type="StandardMaterial3D" id="SafetyMaterial"]
 albedo_color = Color(0.12, 0.13, 0.14, 1)
@@ -42,5 +43,8 @@ shape = SubResource("SphereShape3D_oh74m")
 
 [node name="Helicopter" parent="." unique_id=1497905902 instance=ExtResource("4_b8n5o")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 63.1309, 7.4969826, -441.66714)
+
+[node name="Miku" parent="." unique_id=1860634724 instance=ExtResource("5_jpnk4")]
+transform = Transform3D(-1000, 0, -8.742278e-05, 0, 1000, 0, 8.742278e-05, 0, -1000, -159.42209, 106.52924, 885.30994)
 
 [connection signal="body_entered" from="TriggerHellicopter" to="Helicopter" method="_on_trigger_hellicopter_body_entered"]
